@@ -74,7 +74,7 @@ class SerialListener:
         Returns:
             String conatining full OID of bank/port outlet command
         """
-        return CONFIG[f'BANK{bank}'][f'PORT{port}']
+        return CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}']
 
     def read_serial_conn(self):
         """
@@ -91,48 +91,49 @@ class SerialListener:
 
         # Read and append byte from serial port to parsing buffer
         read_data = self.serial_conn.read_byte()
-        self.read_buffer.append(read_data)
 
-        try:
-            # Attempts to parse current buffer
-            logger.debug('Attempting to parse %s', ''.join(self.read_buffer))
-            command_seqs = self.kvm_parser.parse(''.join(self.read_buffer))
 
-            logger.info('Successfully parsed sequence(s)')
+        # Don't attempt to parse if end-of-sequence character not received
+        if read_data != '\r':
+            self.read_buffer.append(read_data)
 
-            for cmd_seq in command_seqs:
-                logger.debug('Running sequence %s', cmd_seq)
+        # Only parse if the end-of-sequence character was received
+        else:
+            try:
+                # Attempts to parse current buffer
+                logger.debug('Attempting to parse %s', ''.join(self.read_buffer))
+                cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer))
+
+                logger.info('Successfully parsed sequence(s)')
+
+
+                logger.debug('Running sequence %s %s %s', cmd, bank, port)
 
                 # Retrieve OID using bank and port from sequence
-                bank, port = cmd_seq['Bank'], cmd_seq['Port']
                 port_oid = self.get_bank_port_oid(bank, port)
 
                 # Create SNMP command based on command from sequence
-                match cmd_seq['Command']:
-                    case 'On':
+                match cmd:
+                    case 'on':
                         self.snmp_cmd_issuer.set_port_on(port_oid,
-                                                         self.target_ip,
-                                                         self.target_port)
-                    case 'Off':
+                                                        self.target_ip,
+                                                        self.target_port)
+                    case 'of':
                         self.snmp_cmd_issuer.set_port_off(port_oid,
-                                                          self.target_ip,
-                                                          self.target_port)
-                    case 'Cycle':
-                        self.snmp_cmd_issuer.set_port_cycle(port_oid,
-                                                            self.target_ip,
-                                                            self.target_port)
+                                                        self.target_ip,
+                                                        self.target_port)
 
-            # Reset buffer to avoid re-parsing the same sequence twice
-            # Note that we only do this if the parser successfully parsed a
-            # sequence.
-            self.read_buffer.clear()
-            logger.debug('Cleared read buffer')
+                # Reset buffer to avoid re-parsing the same sequence twice
+                # Note that we only do this if the parser successfully parsed a
+                # sequence.
+                self.read_buffer.clear()
+                logger.debug('Cleared read buffer')
 
-        # Errors will be raised when only a portion of the sequence has been
-        # received and attempted to be parsed
-        except ParseError:
-            logger.warning('Parser failed to parse: %s',
-                           ''.join(self.read_buffer))
+            # Errors will be raised when only a portion of the sequence has been
+            # received and attempted to be parsed
+            except ParseError:
+                logger.warning('Parser failed to parse: %s',
+                            ''.join(self.read_buffer))
 
 
 if __name__ == '__main__':

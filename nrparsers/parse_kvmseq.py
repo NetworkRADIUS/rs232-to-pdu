@@ -27,22 +27,9 @@ class KvmSequenceStates(Enum):
                  a terminal or chain token
     """
     INIT = 0
-    START = 1
-    COMMAND = 2
-    BANK = 3
-    PORT = 4
-    CHAIN = 5
-    TERMINAL = 6
-
-
-class PowerCommands(Enum):
-    """
-    Enum values for representing the power commands
-    """
-    OFF = 7
-    ON = 8
-    CYCLE = 9
-
+    COMMAND = 1
+    BANK = 2
+    PORT = 3
 
 
 class ParserKvmSequence(BaseParser):
@@ -56,12 +43,13 @@ class ParserKvmSequence(BaseParser):
         self.text_pos = None
         self.text_len = None
 
-        self.tokens = []
-        self.logic = []
+        self.command = None
+        self.bank = None
+        self.port = None
 
         self.state = None
 
-    def parse(self, text: str) -> dict:
+    def parse(self, text: str) -> list[str, int, int]:
         """
         Entry point for parsing
 
@@ -83,13 +71,14 @@ class ParserKvmSequence(BaseParser):
         self.text_pos = 0
         self.text_len = len(text)
 
-        self.logic = []
+        self.command = None
+        self.bank = None
+        self.port = None
 
         self.state = KvmSequenceStates.INIT
         self.start()
 
-        # Transforms token list into PduCmdLogicNode object and return
-        return self.logic
+        return self.command, self.bank, self.port
 
     def start(self) -> None:
         """
@@ -102,65 +91,22 @@ class ParserKvmSequence(BaseParser):
             logger.debug('Parser currently in %s state', self.state)
             match self.state:
                 case KvmSequenceStates.INIT:
-                    self.match('rule_token_start')
-
-                # A command token can appear after either the start token (DD)
-                # or a chain token (D*)
-                case KvmSequenceStates.START | KvmSequenceStates.CHAIN:
-                    command_token = self.match('rule_token_command')
-                    self.logic.append({
-                        'Command': 'On' if command_token == 'on' else 'Off',
-                        'Bank': -1,
-                        'Port': -1
-                    })
+                    command = self.match('rule_token_command')
+                    self.command = command
                 case KvmSequenceStates.COMMAND:
-                    bank_token = self.match('rule_token_bank')
-                    self.logic[-1]['Bank'] = bank_token
+                    bank_value = self.match('rule_token_bank')
+                    self.bank = bank_value
                 case KvmSequenceStates.BANK:
-                    port_token = self.match('rule_token_port')
-                    self.logic[-1]['Port'] = port_token
-
-                # The port token can be followed by the terminal token (DquitD)
-                # or a chain token (D*)
+                    port_value = self.match('rule_token_port')
+                    self.port = port_value
                 case KvmSequenceStates.PORT:
-                    self.match('rule_token_terminal',
-                               'rule_token_chain')
-                case KvmSequenceStates.TERMINAL:
                     return
-
-    def rule_token_start(self) -> str:
-        """
-        Parser rule that looks for the start token as a keyword
-
-        Returns:
-            Matched keyword
-        """
-        logger.debug('Looking for start token')
-        start_token = self.keyword('DD')
-        self.state = KvmSequenceStates.START
-        logger.info('Found start token')
-        return start_token
-
-    def rule_token_terminal(self) -> str:
-        """
-        Parser rule that looks for the terminal token as a keyword
-
-        Returns:
-            Matched keyword
-
-        """
-        logger.debug('Looking for terminal token')
-        terminal_token = self.keyword('DquitD')
-        self.state = KvmSequenceStates.TERMINAL
-        logger.info('Found terminal token')
-        return terminal_token
-
 
     def rule_token_command(self) -> str:
         """
         Parser rule that looks for the command tokens as a keyword
 
-        Possible values: [on, of]. No typo: 'off' with 1 'f'
+        Possible values: [on, of]. No typo here: actually 'off' with 1 'f'
 
         Returns:
             Matched keyword
@@ -171,49 +117,32 @@ class ParserKvmSequence(BaseParser):
         logger.info('Found command token')
         return command_token
 
-    def rule_token_bank(self) -> str:
+    def rule_token_bank(self) -> int:
         """
-        Parser rule that looks for a bank token as a keyword
+        Parser rule that looks for a bank token as uint8 value
 
-        Possible values: [1, 2, 3, 4, 5]
+        Possible values: [1-256]
 
         Returns:
-            Matched keyword
+            Integer in uint8 range
         """
         logger.debug('Looking for bank token')
-        bank_token = self.keyword('1', '2', '3', '4', '5')
+        bank_value = self.search_uint8()
         self.state = KvmSequenceStates.BANK
         logger.info('Found bank token')
-        return bank_token
+        return bank_value
 
-    def rule_token_port(self) -> str:
+    def rule_token_port(self) -> int:
         """
-        Parser rule that looks for a port token as a keyword
+        Parser rule that looks for a port token as uint8 value
 
-        Possible values: 0[0-8]
-        Note: this assumes that each bank has 8 ports (True as of writing).
+        Possible values: [1-256]
 
         Returns:
-            Matched keyword
+            Integer in uint8 range
         """
         logger.debug('Looking for port token')
-        keywords = ['01', '02', '03', '04', '05', '06', '07', '08']
-        port_token = self.keyword(*keywords)
+        port_value = self.search_uint8()
         self.state = KvmSequenceStates.PORT
         logger.info('Found port token')
-        return port_token
-
-    def rule_token_chain(self) -> str:
-        """
-        Parser rule that looks for a chain token as a keyword
-
-        Used for restart sequence, where bank-port is turned off then on
-
-        Returns:
-            Matched keyword
-        """
-        logger.debug('Looking for chain token')
-        chain_token = self.keyword('D*')
-        self.state = KvmSequenceStates.CHAIN
-        logger.info('Found chain token')
-        return chain_token
+        return port_value

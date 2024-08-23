@@ -38,7 +38,7 @@ class SnmpCommandIssuer:
 
     def __init__(self):
         """
-        """        
+        """
 
     @staticmethod
     async def send_set_command(oid: str, value: int, target_ip: str,
@@ -121,23 +121,4 @@ class SnmpCommandIssuer:
         curr_loop = asyncio.get_running_loop()
         curr_loop.create_task(self.send_set_command(oid,
                                                     PowerbarValues.OFF.value,
-                                                    target_ip, port))
-
-    def set_port_cycle(self, oid, target_ip, port):
-        """
-        Set bank port to CYCLE (OFF then ON) state
-
-        Args:
-            oid (str): OID of bank power outlet command
-            target_ip (str): IP address of SNMP agent
-            port (str): Port of SNMP agent
-        
-        Returns:
-            None
-
-        """
-        logger.debug('Setting %s to %s', oid, PowerbarValues.CYCLE.value)
-        curr_loop = asyncio.get_running_loop()
-        curr_loop.create_task(self.send_set_command(oid,
-                                                    PowerbarValues.CYCLE.value,
                                                     target_ip, port))
