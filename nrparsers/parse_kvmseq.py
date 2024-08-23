@@ -111,8 +111,11 @@ class ParserKvmSequence(BaseParser):
         """
         logger.debug('Looking for command token for "%s" at position %s',
                      self.text, self.text_pos)
-        command_token = self.keyword('on', 'of')
-        self.state = KvmSequenceStates.COMMAND
+        command_token = self.keyword('on', 'of', 'quit', '')
+        if command_token in ['quit', '']:
+            self.state = KvmSequenceStates.TERMINAL
+        else:
+            self.state = KvmSequenceStates.BANK
         return command_token
 
     def rule_token_bank(self) -> int:
@@ -127,7 +130,7 @@ class ParserKvmSequence(BaseParser):
         logger.debug('Looking for bank token for "%s" at position %s',
                      self.text, self.text_pos)
         bank_value = self.search_uint8()
-        self.state = KvmSequenceStates.BANK
+        self.state = KvmSequenceStates.PORT
         return bank_value
 
     def rule_token_port(self) -> int:
@@ -142,5 +145,5 @@ class ParserKvmSequence(BaseParser):
         logger.debug('Looking for port token for "%s" at position %s',
                      self.text, self.text_pos)
         port_value = self.search_uint8()
-        self.state = KvmSequenceStates.PORT
+        self.state = KvmSequenceStates.TERMINAL
         return port_value
