@@ -112,6 +112,10 @@ class SerialListener:
                 # Attempts to parse current buffer
                 cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer))
 
+                if cmd in ['quit', '']:
+                    logger.info('Quit or empty sequence detected')
+                    return
+
                 # Retrieve OID using bank and port from sequence
                 port_oid = self.get_bank_port_oid(bank, port)
 

@@ -27,7 +27,7 @@ def setup_logging() -> None:
     config_file = pathlib.Path("nrlogging", "config.json")
     with open(config_file, "r", encoding='utf-8') as config_read:
         config = json.load(config_read)
-    
+
     # Loads config using json (dictionary) object
     logging.config.dictConfig(config)
 
