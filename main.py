@@ -34,18 +34,29 @@ class SerialListener:
         self.snmp_cmd_issuer = SnmpCommandIssuer()
 
         # Create serial connection
-        serial_port    = CONFIG['SERIAL_CONFIGS']['SERIAL_PORT']
-        serial_timeout = int(CONFIG['SERIAL_CONFIGS']['TIMEOUT'])
-        self.serial_conn = SerialConnection(serial_port, serial_timeout)
 
-        logger.info('Created SerialConnection on port %s with timeout %d',
-                    serial_port, serial_timeout)
+        self.serial_conn = SerialConnection()
 
         # Initialization of other variables to be used in class
         self.read_buffer = []
         self.event_loop = None
         self.target_ip = CONFIG['PDU_LOCATION']['IP_ADDRESS']
         self.target_port = CONFIG['PDU_LOCATION']['PORT']
+
+    def make_connection(self):
+        """
+        Establishes the serial port connection
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Makes the connection
+        serial_port    = CONFIG['SERIAL_CONFIGS']['SERIAL_PORT']
+        serial_timeout = int(CONFIG['SERIAL_CONFIGS']['TIMEOUT'])
+        self.serial_conn.make_connection(serial_port, timeout=serial_timeout)
 
     def start_listening(self):
         """
@@ -57,7 +68,6 @@ class SerialListener:
         Returns:
             None
         """
-        logger.info('Beginning listener')
         self.event_loop = asyncio.new_event_loop()
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
         self.event_loop.run_forever()
@@ -86,9 +96,6 @@ class SerialListener:
         Returns:
             None
         """
-        logger.debug('Reading data from RS-232 connector: %s',
-                     CONFIG['SERIAL_CONFIGS']['SERIAL_PORT'])
-
         # Read and append byte from serial port to parsing buffer
         read_data = self.serial_conn.read_byte()
 
@@ -100,17 +107,16 @@ class SerialListener:
         # Only parse if the end-of-sequence character was received
         else:
             try:
+                logger.debug('Received command sequence: "%s"',
+                             ''.join(self.read_buffer))
                 # Attempts to parse current buffer
-                logger.debug('Attempting to parse %s', ''.join(self.read_buffer))
                 cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer))
-
-                logger.info('Successfully parsed sequence(s)')
-
-
-                logger.debug('Running sequence %s %s %s', cmd, bank, port)
 
                 # Retrieve OID using bank and port from sequence
                 port_oid = self.get_bank_port_oid(bank, port)
+
+                logger.info('Setting Bank %s Port %s to %s',
+                            bank, port, cmd.upper())
 
                 # Create SNMP command based on command from sequence
                 match cmd:
@@ -127,15 +133,15 @@ class SerialListener:
                 # Note that we only do this if the parser successfully parsed a
                 # sequence.
                 self.read_buffer.clear()
-                logger.debug('Cleared read buffer')
 
             # Errors will be raised when only a portion of the sequence has been
             # received and attempted to be parsed
             except ParseError:
-                logger.warning('Parser failed to parse: %s',
+                logger.warning('Parser failed to parse: "%s"',
                             ''.join(self.read_buffer))
 
 
 if __name__ == '__main__':
     serial_listerner = SerialListener()
+    serial_listerner.make_connection()
     serial_listerner.start_listening()
