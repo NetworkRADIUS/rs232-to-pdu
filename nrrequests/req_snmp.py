@@ -68,12 +68,6 @@ class SnmpCommandIssuer:
         auth_protocol = snmp.usmHMACSHAAuthProtocol if CONFIG['PDU_AUTH']['AUTH'] == 'SHA' else None
         priv_protocol = snmp.usmAesCfb128Protocol if CONFIG['PDU_AUTH']['PRIV'] == 'AES' else None
 
-        logger.debug(('Sending SET command to %s:%s '
-                      'as user %s using %s Auth and %s Priv'
-                     ),
-                     target_ip, port, CONFIG['PDU_AUTH']['USER'],
-                     CONFIG['PDU_AUTH']['AUTH'], CONFIG['PDU_AUTH']['PRIV'])
-
         await snmp.setCmd(snmp.SnmpEngine(),
                           snmp.UsmUserData(CONFIG['PDU_AUTH']['USER'],
                                            authKey=CONFIG['PDU_AUTH']['AUTH_PASSPHRASE'],
@@ -84,8 +78,6 @@ class SnmpCommandIssuer:
                           snmp.ContextData(),
                           snmp.ObjectType(snmp.ObjectIdentity(oid),
                                           snmp.Integer(value)))
-
-        logger.info('Command successfully sent')
 
     def set_port_on(self, oid: str, target_ip: str, port: int) -> None:
         """
@@ -99,7 +91,6 @@ class SnmpCommandIssuer:
         Returns:
             None
         """
-        logger.debug('Setting %s to %s', oid, PowerbarValues.ON.value)
         curr_loop = asyncio.get_running_loop()
         curr_loop.create_task(self.send_set_command(oid,
                                                     PowerbarValues.ON.value,
@@ -117,7 +108,6 @@ class SnmpCommandIssuer:
         Returns:
             None
         """
-        logger.debug('Setting %s to %s', oid, PowerbarValues.OFF.value)
         curr_loop = asyncio.get_running_loop()
         curr_loop.create_task(self.send_set_command(oid,
                                                     PowerbarValues.OFF.value,

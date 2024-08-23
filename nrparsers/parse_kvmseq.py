@@ -11,7 +11,6 @@ import nrlogging.loggingfactory as nrlogfac
 from nrparsers.parse_base import BaseParser
 
 # Set up logger for this module
-nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
 
@@ -65,8 +64,7 @@ class ParserKvmSequence(BaseParser):
                 port: <str>
             }
         """
-        logger.debug('Parsing %s', text)
-
+        logger.debug('Attempting to parse "%s"', text)
         self.text = text
         self.text_pos = 0
         self.text_len = len(text)
@@ -88,7 +86,7 @@ class ParserKvmSequence(BaseParser):
             None
         """
         while True:
-            logger.debug('Parser currently in %s state', self.state)
+            logger.info('Currently in state %s', self.state)
             match self.state:
                 case KvmSequenceStates.INIT:
                     command = self.match('rule_token_command')
@@ -111,10 +109,10 @@ class ParserKvmSequence(BaseParser):
         Returns:
             Matched keyword
         """
-        logger.debug('Looking for command token')
+        logger.debug('Looking for command token for "%s" at position %s',
+                     self.text, self.text_pos)
         command_token = self.keyword('on', 'of')
         self.state = KvmSequenceStates.COMMAND
-        logger.info('Found command token')
         return command_token
 
     def rule_token_bank(self) -> int:
@@ -126,10 +124,10 @@ class ParserKvmSequence(BaseParser):
         Returns:
             Integer in uint8 range
         """
-        logger.debug('Looking for bank token')
+        logger.debug('Looking for bank token for "%s" at position %s',
+                     self.text, self.text_pos)
         bank_value = self.search_uint8()
         self.state = KvmSequenceStates.BANK
-        logger.info('Found bank token')
         return bank_value
 
     def rule_token_port(self) -> int:
@@ -141,8 +139,8 @@ class ParserKvmSequence(BaseParser):
         Returns:
             Integer in uint8 range
         """
-        logger.debug('Looking for port token')
+        logger.debug('Looking for port token for "%s" at position %s',
+                     self.text, self.text_pos)
         port_value = self.search_uint8()
         self.state = KvmSequenceStates.PORT
-        logger.info('Found port token')
         return port_value
