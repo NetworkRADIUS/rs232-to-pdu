@@ -18,17 +18,16 @@ class KvmSequenceStates(Enum):
     """
     Enum values for representing KVM parser states
 
-    State names represent the last encountered token (except INIT & TERMINAL)
+    State names represent the token the parser is expecting next
     Example:
-        - COMMAND = parser just parsed a command token (on, of) and is now
-                    looking for a bank token
-        - PORT = parser just parsed a port token and is now looking for either
-                 a terminal or chain token
+        - COMMAND = parser is looking for 'on', 'of', etc.
+        - PORT = parser just parsed a bank token and is now looking for a
+                 port token
     """
-    INIT = 0
     COMMAND = 1
     BANK = 2
     PORT = 3
+    TERMINAL = 4
 
 
 class ParserKvmSequence(BaseParser):
@@ -65,6 +64,7 @@ class ParserKvmSequence(BaseParser):
             }
         """
         logger.debug('Attempting to parse "%s"', text)
+
         self.text = text
         self.text_pos = 0
         self.text_len = len(text)
@@ -73,7 +73,7 @@ class ParserKvmSequence(BaseParser):
         self.bank = None
         self.port = None
 
-        self.state = KvmSequenceStates.INIT
+        self.state = KvmSequenceStates.COMMAND
         self.start()
 
         return self.command, self.bank, self.port
@@ -86,18 +86,18 @@ class ParserKvmSequence(BaseParser):
             None
         """
         while True:
-            logger.info('Currently in state %s', self.state)
+            logger.debug('Parser currently in %s state', self.state)
             match self.state:
-                case KvmSequenceStates.INIT:
+                case KvmSequenceStates.COMMAND:
                     command = self.match('rule_token_command')
                     self.command = command
-                case KvmSequenceStates.COMMAND:
+                case KvmSequenceStates.BANK:
                     bank_value = self.match('rule_token_bank')
                     self.bank = bank_value
-                case KvmSequenceStates.BANK:
+                case KvmSequenceStates.PORT:
                     port_value = self.match('rule_token_port')
                     self.port = port_value
-                case KvmSequenceStates.PORT:
+                case KvmSequenceStates.TERMINAL:
                     return
 
     def rule_token_command(self) -> str:
