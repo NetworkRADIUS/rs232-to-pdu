@@ -173,3 +173,71 @@ class BaseParser:
         # if none of the keywords were found, raise error
         raise ParseError(self.text, self.text_pos,
                          f"No keywords: [{','.join(keywords)}] found")
+
+    def search_number(self) -> int:
+        """
+        Looks for a number at current cursor position
+
+        Stops at first non-numerical value (i.e., anything not [0-9]).
+
+        Args:
+            None
+        
+        Returns:
+            int representing the number found
+        
+        Raises:
+            ParseError if no number was detected
+        """
+        self.remove_leading_whitespace()
+
+        curr_pos= self.text_pos
+
+        number_as_chars = []
+
+        # Parse until end of text reached
+        while curr_pos < self.text_len:
+            curr_char = self.text[curr_pos]
+
+            # we stop parsing upon encountering a non-numerical character
+            if not curr_char.isnumeric():
+                break
+
+            number_as_chars.append(curr_char)
+            curr_pos += 1
+
+        # if no numbers were found (i.e., first char was non-numerical), we
+        # raise error as this should be unexpected
+        if not number_as_chars:
+            raise ParseError(self.text, self.text_pos, 'No number found')
+
+        # Update cursor position and return the integer as an int (rather than
+        # a list of chars)
+        self.text_pos = curr_pos
+        return int(''.join(number_as_chars))
+
+
+    def search_uint8(self) -> int:
+        """
+        Looks for a uint8 number at current cursor position
+
+        Args:
+            None
+
+        Returns:
+            int within range of a uint8
+        
+        Raises:
+            ParseError if the integer parsed is larger than 256 (uint8)
+        """
+        start_pos = self.text_pos
+
+        parsed_number = self.search_number()
+        if parsed_number > 256:
+            # reset staring pos and raise error if integer parsed is larger
+            # than 256
+            self.text_pos = start_pos
+            raise ParseError(self.text, start_pos,
+                             'Parsed integer larger than a uint8')
+
+        return parsed_number
