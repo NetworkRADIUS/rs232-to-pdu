@@ -9,6 +9,8 @@ import asyncio
 import configparser
 import pathlib
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 import nrlogging.loggingfactory as nrlogfac
 from nrconnectors.conn_serial import SerialConnection
 from nrparsers.parse_base import ParseError
@@ -33,8 +35,9 @@ class SerialListener:
         self.kvm_parser = ParserKvmSequence()
         self.snmp_cmd_issuer = SnmpCommandIssuer()
 
-        # Create serial connection
+        self.scheduler = None
 
+        # Create serial connection
         self.serial_conn = SerialConnection()
 
         # Initialization of other variables to be used in class
@@ -62,6 +65,8 @@ class SerialListener:
         """
         Entry point for starting listener
 
+        Also sets up the healthcheck scheduler
+
         Args:
             None
 
@@ -70,6 +75,12 @@ class SerialListener:
         """
         self.event_loop = asyncio.new_event_loop()
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
+
+        # Create and start the scheduler for running healthchecks
+        self.scheduler = AsyncIOScheduler(event_loop=self.event_loop)
+        self.scheduler.add_job(self.snmp_cmd_issuer.run_healthcheck, 'interval', [self.target_ip, self.target_port, 3], seconds=10)
+        self.scheduler.start()
+
         self.event_loop.run_forever()
 
     def read_serial_conn(self):

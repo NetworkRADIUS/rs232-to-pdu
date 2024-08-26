@@ -162,3 +162,55 @@ class SnmpCommandIssuer:
         curr_loop.create_task(self.send_set_command(bank, port,
                                                     PowerbarValues.OFF.value,
                                                     target_ip, ip_port))
+
+    async def send_healthcheck_command(self, target_ip: str, ip_port: int,
+                                       timeout:int) -> None:
+        """
+        Creates and sends GET command to perform a power bank healthcheck
+
+        Args:
+            target_ip: IP address of the agent
+            ip_port: Listening port of the agent
+            timeout: timeout value for SNMP command
+        
+        Return:
+            None
+        
+        """
+        auth_protocol = snmp.usmHMACSHAAuthProtocol if CONFIG['PDU_AUTH']['AUTH'] == 'SHA' else None
+        priv_protocol = snmp.usmAesCfb128Protocol if CONFIG['PDU_AUTH']['PRIV'] == 'AES' else None
+
+        try:
+            async with asyncio.timeout(timeout):
+                results = await snmp.getCmd(snmp.SnmpEngine(),
+                                            snmp.UsmUserData(CONFIG['PDU_AUTH']['USER'],
+                                                            authKey=CONFIG['PDU_AUTH']['AUTH_PASSPHRASE'],
+                                                            privKey=CONFIG['PDU_AUTH']['PRIV_PASSPHRASE'],
+                                                            authProtocol=auth_protocol,
+                                                            privProtocol=priv_protocol),
+                                            snmp.UdpTransportTarget((target_ip, ip_port)),
+                                            snmp.ContextData(),
+                                            snmp.ObjectType(snmp.ObjectIdentity('SNMPv2-MIB', 'sysName', 0)))
+
+            err_indict, err_status, err_index, var_binds = results
+
+            if not err_indict:
+                logger.info('Power bank in good health...')
+            else:
+                logger.error('Power bank healthcheck failed... %s', err_indict)
+        except TimeoutError:
+            logger.error('Power bank healthcheck timed out...')
+    
+    def run_healthcheck(self, target_ip: str, ip_port: int, timeout: int):
+        """
+        Wrapper function to run healthcheck as an async coroutine
+
+        Args:
+            target_ip: IP address of the agent
+            ip_port: Listening port of the agent
+            timeout: timeout value for SNMP command
+        
+        Return:
+            None
+        """
+        asyncio.run(self.send_healthcheck_command(target_ip, ip_port, timeout))
