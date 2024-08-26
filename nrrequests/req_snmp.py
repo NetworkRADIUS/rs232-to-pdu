@@ -39,47 +39,97 @@ class SnmpCommandIssuer:
     def __init__(self):
         """
         """
-
+    
     @staticmethod
-    async def send_set_command(oid: str, value: int, target_ip: str,
-                               port: int = 161) -> None:
+    def get_bank_port_oid(bank: str, port: str) -> str:
+        """
+        Retrieves OID for specific bank/port from config file
+
+        Args:
+            bank (str): bank number as a string
+            port (str): port number as a string
+
+        Returns:
+            String conatining full OID of bank/port outlet command
+        """
+        return CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}']
+
+    async def send_set_command(self,
+                               bank: int, port: int, value: int,
+                               target_ip: str, ip_port: int = 161,
+                               timeout: int = 5,
+                               retry_delay: int = 3,
+                               max_retry: int = 3) -> None:
         """Create and sends SET command with given parameters
 
         Args:
-          oid (str):
-            String representing the device name or OID
-          value (int):
-            New value for the device
-          target_ip (str):
-            IP address of where device is located
-          community (str):
-            Name of SNMP community device is in
-          port (int):
-            Port on which device is expecting SNMP commands
+            bank (int):
+                Numerical value of the bank
+            port (int):
+                Numerical value of the outlet port
+            value (int):
+                New value for the device
+            target_ip (str):
+                IP address of where device is located
+            community (str):
+                Name of SNMP community device is in
+            ip_port (int):
+                Network port on which device is expecting SNMP commands
+            timeout (int):
+                Number in seconds after which the command is considered dead
+            retry_delay (int):
+                Number in seconds after which to resend the command after the
+                previous attempt failed or timed-out
+            max_retry (int):
+                Maximum number of times to retry the command
         
         Returns:
-          None
-        
-        Raises:
-          None
+            None
         """
+        # Retrieve OID using bank and port from sequence
+        oid = self.get_bank_port_oid(bank, port)
 
         # Sets up auth and priv protocols
         auth_protocol = snmp.usmHMACSHAAuthProtocol if CONFIG['PDU_AUTH']['AUTH'] == 'SHA' else None
         priv_protocol = snmp.usmAesCfb128Protocol if CONFIG['PDU_AUTH']['PRIV'] == 'AES' else None
 
-        await snmp.setCmd(snmp.SnmpEngine(),
-                          snmp.UsmUserData(CONFIG['PDU_AUTH']['USER'],
-                                           authKey=CONFIG['PDU_AUTH']['AUTH_PASSPHRASE'],
-                                           privKey=CONFIG['PDU_AUTH']['PRIV_PASSPHRASE'],
-                                           authProtocol=auth_protocol,
-                                           privProtocol=priv_protocol),
-                          snmp.UdpTransportTarget((target_ip, port)),
-                          snmp.ContextData(),
-                          snmp.ObjectType(snmp.ObjectIdentity(oid),
-                                          snmp.Integer(value)))
+        for attempt in range(max_retry):
+            try:
+                async with asyncio.timeout(timeout):
+                    results = await snmp.setCmd(snmp.SnmpEngine(),
+                                                snmp.UsmUserData(CONFIG['PDU_AUTH']['USER'],
+                                                                authKey=CONFIG['PDU_AUTH']['AUTH_PASSPHRASE'],
+                                                                privKey=CONFIG['PDU_AUTH']['PRIV_PASSPHRASE'],
+                                                                authProtocol=auth_protocol,
+                                                                privProtocol=priv_protocol),
+                                                snmp.UdpTransportTarget((target_ip, ip_port)),
+                                                snmp.ContextData(),
+                                                snmp.ObjectType(snmp.ObjectIdentity(oid),
+                                                                snmp.Integer(value)))
+                
+                err_indict, err_status, err_index, var_binds = results
 
-    def set_port_on(self, oid: str, target_ip: str, port: int) -> None:
+                if err_indict:
+                    logger.error(('Error has occured when attempting to set '
+                                  'bank %s port %s to state %s: %s'),
+                                  bank, port, value, err_indict)
+                    asyncio.sleep(retry_delay)
+                else:
+                    logger.info('Successfully set bank %s port %s to state %s',
+                                bank, port, value)
+                    return
+
+            except TimeoutError:
+                logger.error(('Timeout Error when attempting to set bank %s '
+                              'port %s to state %s'),
+                              bank, port, value)
+        logger.error(('Maximum attempts reached when attempting to set bank '
+                      '%s port %s to state %s'),
+                      bank, port, value)
+
+
+
+    def set_port_on(self, bank: int, port: int, target_ip: str, ip_port: int) -> None:
         """
         Set bank port to ON state
 
@@ -92,11 +142,11 @@ class SnmpCommandIssuer:
             None
         """
         curr_loop = asyncio.get_running_loop()
-        curr_loop.create_task(self.send_set_command(oid,
+        curr_loop.create_task(self.send_set_command(bank, port,
                                                     PowerbarValues.ON.value,
-                                                    target_ip, port))
+                                                    target_ip, ip_port))
 
-    def set_port_off(self, oid, target_ip, port):
+    def set_port_off(self, bank: int, port: int, target_ip: str, ip_port: int) -> None:
         """
         Set bank port to OFF state
 
@@ -109,6 +159,6 @@ class SnmpCommandIssuer:
             None
         """
         curr_loop = asyncio.get_running_loop()
-        curr_loop.create_task(self.send_set_command(oid,
+        curr_loop.create_task(self.send_set_command(bank, port,
                                                     PowerbarValues.OFF.value,
-                                                    target_ip, port))
+                                                    target_ip, ip_port))

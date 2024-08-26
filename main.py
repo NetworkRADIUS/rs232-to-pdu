@@ -72,20 +72,6 @@ class SerialListener:
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
         self.event_loop.run_forever()
 
-    @staticmethod
-    def get_bank_port_oid(bank: str, port: str) -> str:
-        """
-        Retrieves OID for specific bank/port from config file
-
-        Args:
-            bank (str): bank number as a string
-            port (str): port number as a string
-
-        Returns:
-            String conatining full OID of bank/port outlet command
-        """
-        return CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}']
-
     def read_serial_conn(self):
         """
         Listener callback function to read serial input
@@ -98,7 +84,6 @@ class SerialListener:
         """
         # Read and append byte from serial port to parsing buffer
         read_data = self.serial_conn.read_byte()
-
 
         # Don't attempt to parse if end-of-sequence character not received
         if read_data != '\r':
@@ -116,20 +101,17 @@ class SerialListener:
                     logger.info('Quit or empty sequence detected')
                     return
 
-                # Retrieve OID using bank and port from sequence
-                port_oid = self.get_bank_port_oid(bank, port)
-
                 logger.info('Setting Bank %s Port %s to %s',
                             bank, port, cmd.upper())
 
                 # Create SNMP command based on command from sequence
                 match cmd:
                     case 'on':
-                        self.snmp_cmd_issuer.set_port_on(port_oid,
+                        self.snmp_cmd_issuer.set_port_on(bank, port,
                                                         self.target_ip,
                                                         self.target_port)
                     case 'of':
-                        self.snmp_cmd_issuer.set_port_off(port_oid,
+                        self.snmp_cmd_issuer.set_port_off(bank, port,
                                                         self.target_ip,
                                                         self.target_port)
 
