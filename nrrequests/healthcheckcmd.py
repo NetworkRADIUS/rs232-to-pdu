@@ -91,15 +91,15 @@ class HealthcheckCmd(BaseSnmpCmd):
 
         return results
 
-    async def run_cmd(self) -> None:
+    async def run_cmd(self, cmd_id: int) -> bool:
         """
         Contains logic for logging and when to invoke SNMP commands
 
         Args:
-            None
+            cmd_id (int): a numerical ID of the command
         
         Returns:
-            None
+            boolean representing success/failure. True = success.
         """
 
         try:
@@ -110,16 +110,18 @@ class HealthcheckCmd(BaseSnmpCmd):
 
             # If no errors, return to quit function
             if not err_indicator:
-                logger.info('PDU health check passed')
-                return
+                logger.info('Command #%d: PDU health check passed', cmd_id)
+                return True
 
             # If error, log error in entirety
             logger.error(
-                ('Error when performing health check.'
+                ('Command #%d: Error when performing health check.'
                  'Engine status: %s. PDU status: %s. MIB status: %s'),
-                err_indicator, err_status, var_binds[err_index]
+                 cmd_id, err_indicator, err_status, var_binds[err_index]
             )
 
         # On catching timeout, log the error
         except TimeoutError:
-            logger.error('Timeout Error on health check')
+            logger.error('Command #%d: Timed-out on health check', cmd_id)
+
+        return False

@@ -103,15 +103,15 @@ class PowerChangeCmd(BaseSnmpCmd):
 
         return results
 
-    async def run_cmd(self) -> None:
+    async def run_cmd(self, cmd_id) -> bool:
         """
         Contains logic for logging and when to invoke SNMP commands
 
         Args:
-            None
+            cmd_id (int): a numerical ID of the command
         
         Returns:
-            None
+            boolean representing success/failure. True = success.
         """
         # for loop to go through max attempts
         for attempt in range(self.max_attempts):
@@ -125,17 +125,17 @@ class PowerChangeCmd(BaseSnmpCmd):
                 # If no errors, return to quit function
                 if not err_indicator and not err_status:
                     logger.info(
-                        'Successfully set bank %s port %s to %s',
-                        self.outlet_bank, self.outlet_port,
+                        'Command #%d: Successfully set bank %s port %s to %s',
+                        cmd_id, self.outlet_bank, self.outlet_port,
                         self.pdu_object.object_value
                     )
-                    return
+                    return True
 
                 # If error, log error in entirety
                 logger.error(
-                    ('Error when setting bank %s port %s to %s.'
-                        'Engine status: %s. PDU status: %s. MIB status: %s'),
-                    self.outlet_bank, self.outlet_port,
+                    ('Command #%d Error when setting bank %s port %s to %s.'
+                     'Engine status: %s. PDU status: %s. MIB status: %s'),
+                    cmd_id, self.outlet_bank, self.outlet_port,
                     self.pdu_object.object_value,
                     err_indicator, err_status, var_binds[err_index]
                 )
@@ -143,8 +143,8 @@ class PowerChangeCmd(BaseSnmpCmd):
             # On catching timeout, log the error
             except TimeoutError:
                 logger.error(
-                    'Timeout Error when setting bank %s port %s to %s',
-                    self.outlet_bank, self.outlet_port,
+                    'Command #%d: Timed-out setting bank %s port %s to %s',
+                    cmd_id, self.outlet_bank, self.outlet_port,
                     self.pdu_object.object_value
                 )
 
@@ -154,7 +154,9 @@ class PowerChangeCmd(BaseSnmpCmd):
         # If app reaches this line, max attempts have been attempted, thus
         # log the error
         logger.error(
-            'Maximum retry attempts when setting bank %s port %s to %s',
-             self.outlet_bank, self.outlet_port,
+            'Command #%d: Max retry attempts setting bank %s port %s to %s',
+             cmd_id, self.outlet_bank, self.outlet_port,
              self.pdu_object.object_value
         )
+
+        return False
