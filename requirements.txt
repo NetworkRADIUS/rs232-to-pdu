@@ -1,3 +1,4 @@
+APScheduler==3.10.4
 astroid==3.2.4
 certifi==2024.7.4
 cffi==1.17.0
@@ -19,6 +20,9 @@ pysmi==1.4.4
 pysnmp==6.2.5
 pysnmpcrypto==0.0.4
 python-dotenv==1.0.1
+pytz==2024.1
 requests==2.32.3
+six==1.16.0
 tomlkit==0.13.2
+tzlocal==5.2
 urllib3==2.2.2
