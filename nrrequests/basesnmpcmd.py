@@ -12,6 +12,9 @@ Date: 2024-08-28
 """
 from dataclasses import dataclass
 
+import pysnmp.hlapi.asyncio as pysnmp
+from pysnmp.proto.errind import ErrorIndication
+
 @dataclass
 class AgentLocator:
     """
@@ -103,7 +106,10 @@ class BaseSnmpCmd:
         self.max_attempts = max_attempts
         self.retry_delay = retry_delay
 
-    async def invoke_cmd(self) -> None:
+    async def invoke_cmd(self) -> tuple[ErrorIndication,
+                                        str,
+                                        int,
+                                        tuple[pysnmp.ObjectType,...]]:
         """
         Abstract method to call the pysnmp commands (getCmd, setCmd, etc.)
 
@@ -111,11 +117,17 @@ class BaseSnmpCmd:
             None
         
         Returns:
-            None
+            errorIndication (ErrorIndication): Engine error indicator. Has
+                                               value of None if no errors
+            errorStatus (str): PDU (protocol data unit) error indicator. Has
+                               value of None if no errors
+            errorIndex (int): index for varBinds for object causing error
+            varBinds (tuple[pysnmp.ObjectType,...]): sequence of ObjectTypes
+                                                     representing MIBs
         """
         raise NotImplementedError('Must be implemented in child class')
 
-    async def run_cmd(self) -> None:
+    async def run_cmd(self, cmd_id: int) -> bool:
         """
         Abstract method that contains logic for when to call the pysnmp
         commands.
@@ -123,9 +135,9 @@ class BaseSnmpCmd:
         Should not actually invoke these functions here.
 
         Args:
-            None
+            cmd_id (int): a numerical ID of the command
         
         Returns:
-            None
+            boolean representing success/failure. True = success.
         """
         raise NotImplementedError('Must be implemented in child class')
