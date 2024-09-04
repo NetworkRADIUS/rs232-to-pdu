@@ -13,14 +13,14 @@ import pathlib
 import pysnmp.hlapi.asyncio as pysnmp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-import nrlogging.loggingfactory as nrlogfac
-from nrconnectors.conn_serial import SerialConnection
-from nrparsers.parse_base import ParseError
-from nrparsers.parse_kvmseq import ParserKvmSequence
-from nrrequests.basesnmpcmd import AgentLocator, SnmpUser
-from nrrequests.healthcheckcmd import HealthcheckCmd
-from nrrequests.powerchangecmd import PowerChangeCmd
-from nrrequests.snmpcmdrunner import SnmpCmdRunner
+import sersnmplogging.loggingfactory as nrlogfac
+from sersnmpconnectors.conn_serial import SerialConnection
+from sersnmpparsers.parse_base import ParseError
+from sersnmpparsers.parse_kvmseq import ParserKvmSequence
+from sersnmprequests.basesnmpcmd import AgentLocator, SnmpUser
+from sersnmprequests.healthcheckcmd import HealthcheckCmd
+from sersnmprequests.powerchangecmd import PowerChangeCmd
+from sersnmprequests.snmpcmdrunner import SnmpCmdRunner
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('config.ini')
