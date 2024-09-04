@@ -4,6 +4,7 @@ Contains the base parser class that contains important parsing functions
 Author: Patrick Guo
 Date: 2024-08-13
 """
+from typing import Callable
 import sersnmplogging.loggingfactory as nrlogfac
 
 
@@ -35,29 +36,19 @@ class BaseParser:
     Base parser class
     """
     def __init__(self):
-        self.text = ''
-        self.text_pos = 0
-        self.text_len = 0
+        self.buffer = ''
+        self.cursor_pos = 0
 
         self.tokens = []
 
-    def parse(self, text: str) -> None:
+    def parse(self, buffer: str) -> None:
         """
         Entry point for parsing
 
-        Sets initial state for state machine
         To be overriden in child class
 
         Args:
-            Text (str): string to be parsed
-        """
-        raise NotImplementedError
-
-    def start(self) -> None:
-        """
-        Defines state machine
-
-        To be overriden in child class
+            buffer (str): string to be parsed
         """
         raise NotImplementedError
 
@@ -71,21 +62,21 @@ class BaseParser:
         whitespace_tokens = [' ']
         while True:
             # Stop if at last position
-            if self.text_pos == self.text_len:
+            if self.cursor_pos == len(self.buffer):
                 break
 
             # Stop if encountered non-whitespace character
-            if self.text[self.text_pos] not in whitespace_tokens:
+            if self.buffer[self.cursor_pos] not in whitespace_tokens:
                 break
 
-            self.text_pos += 1
+            self.cursor_pos += 1
 
-    def match(self, *rules: str) -> str:
+    def match_rule(self, *rule_funcs: Callable) -> str:
         """
         Attempts to match parser based on given rules
 
         Args:
-            rules: array of strings representing function names
+            rule_funcs: array of functions to call
         
         Returns:
             Matched token (str)
@@ -99,42 +90,40 @@ class BaseParser:
         furthest_exception = None
         furthest_errored_rules = []
 
-        for rule in rules:
+        for rule_func in rule_funcs:
             logger.debug('Attempting to match rule %s for "%s" at position %s',
-                         rule, self.text, self.text_pos)
-            init_pos = self.text_pos
+                         rule_func, self.buffer, self.cursor_pos)
+            init_pos = self.cursor_pos
             try:
                 # Get function with same name as inputted rule
-                extract_func = getattr(self, rule)
-                ret_val = extract_func()
-                return ret_val
+                return rule_func()
 
             # rules will fail if could not find match
             except ParseError as e:
                 logger.warning('Failed to match rule %s for "%s" at position %s',
-                               rule, self.text, self.text_pos)
+                               rule_func.__name__, self.buffer, self.cursor_pos)
                 # reset cursor position to prior to matching the rule
-                self.text_pos = init_pos
+                self.cursor_pos = init_pos
 
                 if e.pos > furthest_error_pos:
                     furthest_error_pos = e.pos
                     furthest_exception = e
 
                     furthest_errored_rules.clear()
-                    furthest_errored_rules.append(rule)
+                    furthest_errored_rules.append(rule_func.__name__)
                 # In event of multiple rules reaching same position, report all
                 elif e.pos == furthest_error_pos:
-                    furthest_errored_rules.append(rule)
+                    furthest_errored_rules.append(rule_func.__name__)
 
         logger.error('Failed to match all rules: %s for "%s" at position %s',
-                     ', '.join(rules), self.text, self.text_pos)
+                     ', '.join([rule_func.__name__ for rule_func in rule_funcs]), self.buffer, self.cursor_pos)
         # If all rules failed, raise exception caused by furthest reaching rule
         if len(furthest_errored_rules) == 1:
             raise furthest_exception
         if len(furthest_errored_rules) > 1:
             error_msg = (f'{", ".join(furthest_errored_rules)} '
                          f'all failed to match')
-            raise ParseError(self.text, self.text_pos, error_msg)
+            raise ParseError(self.buffer, self.cursor_pos, error_msg)
         return None
 
     def keyword(self, *keywords: tuple[str,...],
@@ -154,24 +143,24 @@ class BaseParser:
 
         for keyword in keywords:
             logger.debug('Attempting to find keyword %s for "%s" at position %s',
-                         keyword, self.text, self.text_pos)
+                         keyword, self.buffer, self.cursor_pos)
             # Calculate starting and ending position of keyword if present at
             # current location
-            start_pos = self.text_pos
+            start_pos = self.cursor_pos
             end_pos = start_pos + len(keyword)
 
             # Then check if the slice matches the keyword
             # Will NOT raise index-out-of-bounds errors
-            if self.text[start_pos: end_pos] == keyword:
-                self.text_pos += len(keyword)
+            if self.buffer[start_pos: end_pos] == keyword:
+                self.cursor_pos += len(keyword)
 
                 # returns the keyword that matched
                 return keyword
 
         logger.error('Failed to find keywords: %s, for "%s" at position %s',
-                     ', '.join(keywords), self.text, self.text_pos)
+                     ', '.join(keywords), self.buffer, self.cursor_pos)
         # if none of the keywords were found, raise error
-        raise ParseError(self.text, self.text_pos,
+        raise ParseError(self.buffer, self.cursor_pos,
                          f"No keywords: [{','.join(keywords)}] found")
 
     def search_positive_number(self) -> int:
@@ -190,35 +179,28 @@ class BaseParser:
             ParseError if no number was detected
         """
         logger.debug('Looking for positive number for "%s" at position %s',
-                     self.text, self.text_pos)
+                     self.buffer, self.cursor_pos)
         self.remove_leading_whitespace()
 
-        curr_pos= self.text_pos
-
-        number_as_chars = []
+        init_pos = self.cursor_pos
 
         # Parse until end of text reached
-        while curr_pos < self.text_len:
-            curr_char = self.text[curr_pos]
-
-            # we stop parsing upon encountering a non-numerical character
-            if not curr_char.isnumeric():
+        while self.cursor_pos < len(self.buffer):
+            if not self.buffer[self.cursor_pos].isnumeric():
                 break
 
-            number_as_chars.append(curr_char)
-            curr_pos += 1
+            self.cursor_pos += 1
 
         # if no numbers were found (i.e., first char was non-numerical), we
         # raise error as this should be unexpected
-        if not number_as_chars:
+        if init_pos == self.cursor_pos:
             logger.error('No positive number found for "%s"at position %s',
-                         self.text, self.text_pos)
-            raise ParseError(self.text, self.text_pos, 'No number found')
+                         self.buffer, self.cursor_pos)
+            raise ParseError(self.buffer, self.cursor_pos, 'No number found')
 
         # Update cursor position and return the integer as an int (rather than
         # a list of chars)
-        self.text_pos = curr_pos
-        return int(''.join(number_as_chars))
+        return int(self.buffer[init_pos:self.cursor_pos])
 
 
     def search_uint8(self) -> int:
@@ -235,17 +217,17 @@ class BaseParser:
             ParseError if the integer parsed is larger than 256 (uint8)
         """
         logger.debug('Looking for uint8 number for "%s" at position %s',
-                     self.text, self.text_pos)
-        start_pos = self.text_pos
+                     self.buffer, self.cursor_pos)
+        start_pos = self.cursor_pos
 
         parsed_number = self.search_positive_number()
         if parsed_number > 256:
             # reset staring pos and raise error if integer parsed is larger
             # than 256
-            self.text_pos = start_pos
+            self.cursor_pos = start_pos
             logger.error('No uint8 number found for "%s" at position %s',
-                         self.text, self.text_post)
-            raise ParseError(self.text, start_pos,
+                         self.buffer, self.text_post)
+            raise ParseError(self.buffer, start_pos,
                              'Parsed integer larger than a uint8')
 
         return parsed_number

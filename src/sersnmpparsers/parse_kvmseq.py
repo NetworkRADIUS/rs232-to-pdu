@@ -34,71 +34,35 @@ class ParserKvmSequence(BaseParser):
     """
     Parser to turn string sequence into a command
     """
-    def __init__(self):
-        super().__init__()
 
-        self.text = None
-        self.text_pos = None
-        self.text_len = None
-
-        self.command = None
-        self.bank = None
-        self.port = None
-
-        self.state = None
-
-    def parse(self, text: str) -> list[str, int, int]:
+    def parse(self, buffer: str) -> list[str, int, int]:
         """
         Entry point for parsing
 
-        Sets initial state to INIT
-
         Args:
-            text (str): string to be parsed
+            buffer (str): string to be parsed
         
         Returns:
-            Returns a dictionary with format: {
+            Returns a list containing: 
                 command: <str>
                 bank: <str>
                 port: <str>
-            }
         """
-        logger.debug('Attempting to parse "%s"', text)
+        logger.debug('Attempting to parse "%s"', buffer)
 
-        self.text = text
-        self.text_pos = 0
-        self.text_len = len(text)
+        self.buffer = buffer
+        self.cursor_pos = 0
 
-        self.command = None
-        self.bank = None
-        self.port = None
+        return self.match_rule(self.rule_token_command)
 
-        self.state = KvmSequenceStates.COMMAND
-        self.start()
+    # def start(self) -> None:
+    #     """
+    #     Defines state machine
 
-        return self.command, self.bank, self.port
-
-    def start(self) -> None:
-        """
-        Defines state machine
-
-        Returns:
-            None
-        """
-        while True:
-            logger.debug('Parser currently in %s state', self.state)
-            match self.state:
-                case KvmSequenceStates.COMMAND:
-                    command = self.match('rule_token_command')
-                    self.command = command
-                case KvmSequenceStates.BANK:
-                    bank_value = self.match('rule_token_bank')
-                    self.bank = bank_value
-                case KvmSequenceStates.PORT:
-                    port_value = self.match('rule_token_port')
-                    self.port = port_value
-                case KvmSequenceStates.TERMINAL:
-                    return
+    #     Returns:
+    #         None
+    #     """
+    #     return self.match_rule(self.rule_token_command)
 
     def rule_token_command(self) -> str:
         """
@@ -110,13 +74,12 @@ class ParserKvmSequence(BaseParser):
             Matched keyword
         """
         logger.debug('Looking for command token for "%s" at position %s',
-                     self.text, self.text_pos)
-        command_token = self.keyword('on', 'of', 'quit', '')
+                     self.buffer, self.cursor_pos)
+        command_token = self.keyword('on', 'of', 'cy', 'quit', '')
         if command_token in ['quit', '']:
-            self.state = KvmSequenceStates.TERMINAL
-        else:
-            self.state = KvmSequenceStates.BANK
-        return command_token
+            return None, None, None
+
+        return command_token, *self.match_rule(self.rule_token_bank)
 
     def rule_token_bank(self) -> int:
         """
@@ -128,10 +91,9 @@ class ParserKvmSequence(BaseParser):
             Integer in uint8 range
         """
         logger.debug('Looking for bank token for "%s" at position %s',
-                     self.text, self.text_pos)
+                     self.buffer, self.cursor_pos)
         bank_value = self.search_uint8()
-        self.state = KvmSequenceStates.PORT
-        return bank_value
+        return bank_value, self.match_rule(self.rule_token_port)
 
     def rule_token_port(self) -> int:
         """
@@ -143,7 +105,6 @@ class ParserKvmSequence(BaseParser):
             Integer in uint8 range
         """
         logger.debug('Looking for port token for "%s" at position %s',
-                     self.text, self.text_pos)
+                     self.buffer, self.cursor_pos)
         port_value = self.search_uint8()
-        self.state = KvmSequenceStates.TERMINAL
         return port_value

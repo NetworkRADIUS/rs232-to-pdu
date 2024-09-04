@@ -59,3 +59,15 @@ class SerialConnection:
         bytes_read = self.ser.read(num_bytes)
         decoded_data = bytes_read.decode(ENCODING)
         return decoded_data
+
+    def read_all_waiting_bytes(self) -> str:
+        """
+        Reads all bytes waiting in the stream
+
+        Args:
+            None
+
+        Returns:
+            decoded string of bytes read
+        """
+        return self.ser.read(self.ser.in_waiting).decode(ENCODING)

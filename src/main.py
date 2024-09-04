@@ -37,6 +37,7 @@ class PowerbarValues(enum.Enum):
     """
     OFF = 1
     ON = 2
+    CYCLE = 3
 
 
 class SerialListener:
@@ -183,54 +184,63 @@ class SerialListener:
         Returns:
             None
         """
-        # Read and append byte from serial port to parsing buffer
-        read_data = self.serial_conn.read_byte()
+        # Read and appends all waiting bytes to read buffer
+        self.read_buffer += self.serial_conn.read_all_waiting_bytes()
 
-        # Don't attempt to parse if end-of-sequence character not received
-        if read_data != '\r':
-            self.read_buffer.append(read_data)
+        # variable for holding the start position of the current seq
+        curr_seq_start_pos = 0
 
-        # Only parse if the end-of-sequence character was received
-        else:
-            try:
-                logger.debug('Received command sequence: "%s"',
-                             ''.join(self.read_buffer))
-                # Attempts to parse current buffer
-                cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer))
+        # Iterate through entire read buffer
+        for i, buffer_char in enumerate(self.read_buffer):
 
-                if cmd in ['quit', '']:
-                    logger.info('Quit or empty sequence detected')
-                    return
+            # If the \r char is encountered, attempt to parse sequence
+            if buffer_char == '\r':
+                try:
+                    logger.debug('Received command sequence: "%s"',
+                                ''.join(self.read_buffer))
+                    # Attempt to parse part of read buffer containing sequence
+                    cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer[curr_seq_start_pos:i]))
 
-                logger.info('Setting Bank %s Port %s to %s',
-                            bank, port, cmd.upper())
+                    # Upon encountering quit and empty sequence, do nothing
+                    if cmd in ['quit', '']:
+                        logger.info('Quit or empty sequence detected')
+                        return
 
-                obj_oid = (CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}'],)
+                    logger.info('Setting Bank %s Port %s to %s',
+                                bank, port, cmd.upper())
 
-                # Create SNMP command based on command from sequence
-                match cmd:
-                    case 'on':
-                        self.add_power_change_to_queue(
-                            pysnmp.Integer(PowerbarValues.ON.value), obj_oid,
-                            bank, port
-                        )
-                    case 'of':
-                        self.add_power_change_to_queue(
-                            pysnmp.Integer(PowerbarValues.OFF.value), obj_oid,
-                            bank, port
-                        )
+                    # Retrieve OID from config
+                    obj_oid = (CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}'],)
 
-                # Reset buffer to avoid re-parsing the same sequence twice
-                # Note that we only do this if the parser successfully parsed a
-                # sequence.
-                self.read_buffer.clear()
+                    # Create SNMP command based on command from sequence
+                    match cmd:
+                        case 'on':
+                            self.add_power_change_to_queue(
+                                pysnmp.Integer(PowerbarValues.ON.value), obj_oid,
+                                bank, port
+                            )
+                        case 'of':
+                            self.add_power_change_to_queue(
+                                pysnmp.Integer(PowerbarValues.OFF.value), obj_oid,
+                                bank, port
+                            )
+                        case 'cy':
+                            self.add_power_change_to_queue(
+                                pysnmp.Integer(PowerbarValues.CYCLE.value), obj_oid,
+                                bank, port
+                            )
 
-            # Errors will be raised when only a portion of the sequence has been
-            # received and attempted to be parsed
-            except ParseError:
-                logger.warning('Parser failed to parse: "%s"',
-                            ''.join(self.read_buffer))
+                # Errors will be raised when only a portion of the sequence has been
+                # received and attempted to be parsed
+                except ParseError:
+                    logger.warning('Parser failed to parse: "%s"',
+                                ''.join(self.read_buffer))
+                curr_seq_start_pos = i + 1
 
+        # Delete parsed portion of buffer
+        # Note that we do not attempt to re-parse failed sequences because
+        # we only parse completed (\r at end) sequences
+        del self.read_buffer[:curr_seq_start_pos]
 
 if __name__ == '__main__':
     serial_listerner = SerialListener()
