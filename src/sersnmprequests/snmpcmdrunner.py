@@ -26,10 +26,6 @@ class SnmpCmdRunner:
         # priority of new items
         self.prio_counter = 0
 
-        # Counter of how many commands the runner has run thus far
-        # Should be a separate counter from prio_counter because prio_counter
-        # can increase by more than 1 in a single "loop"
-        self.cmd_counter = 1
 
     async def put_into_queue(self,
                              snmp_cmd: BaseSnmpCmd,
@@ -69,5 +65,4 @@ class SnmpCmdRunner:
             # Will not grab next item until the previous command has been
             # completed
             priority, snmp_cmd = await self.queue.get()
-            success = await snmp_cmd.run_cmd(self.cmd_counter)
-            self.cmd_counter += 1
+            success = await snmp_cmd.run_cmd()

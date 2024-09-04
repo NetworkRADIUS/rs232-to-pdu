@@ -77,7 +77,8 @@ class BaseSnmpCmd:
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
-                 object_value: any, object_identities: tuple[any,...]
+                 object_value: any, object_identities: tuple[any,...],
+                 cmd_id: int
                  ) -> None:
         """
         Initializes attributes
@@ -95,6 +96,7 @@ class BaseSnmpCmd:
             retry_delay (int): time in seconds before retrying a failed command
             object_value (any): desired new value of object
             object_identities (tuple[any,...]): object identifiers
+            cmd_id (int): int representing ID of current command
         """
 
         # Initiate our entity objects
@@ -106,6 +108,8 @@ class BaseSnmpCmd:
         self.timeout = timeout
         self.max_attempts = max_attempts
         self.retry_delay = retry_delay
+
+        self.cmd_id = cmd_id
 
     async def invoke_cmd(self) -> tuple[ErrorIndication,
                                         str,
@@ -128,12 +132,12 @@ class BaseSnmpCmd:
         """
         raise NotImplementedError('Must be implemented in child class')
 
-    async def run_cmd(self, cmd_id: int) -> bool:
+    async def run_cmd(self) -> bool:
         """
         Control flow method that calls invoke_cmd and error/success handlers
 
         Args:
-            cmd_id (int): a numerical ID of the command
+            None
         
         Returns:
             boolean representing success/failure. True = success.
@@ -145,53 +149,52 @@ class BaseSnmpCmd:
                     err_indicator, err_status, err_index, var_binds = result
 
                 if not err_indicator or err_status:
-                    self.handler_cmd_success(cmd_id)
+                    self.handler_cmd_success()
                     return True
-                
-                self.handler_cmd_error(err_indicator, err_status, err_index, var_binds, cmd_id)
+
+                self.handler_cmd_error(err_indicator, err_status, err_index, var_binds)
             except TimeoutError:
-                self.handler_timeout_error(cmd_id)
+                self.handler_timeout_error()
             await asyncio.sleep(self.retry_delay)
-        
+
         # If for loop is exited, max retry attempts have been reached, thus
         # max attemp error has occured
-        self.handler_max_attempts_error(cmd_id)
+        self.handler_max_attempts_error()
         return False
-    
 
-    def handler_cmd_success(self, cmd_id: int) -> None:
+    def handler_cmd_success(self) -> None:
         """
         Abstract method reprsenting handler for SNMP CMD success
 
         Args:
-            cmd_id (int): ID of the current command
+            None
         """
         raise NotImplementedError('Must be implemented in child class')
 
     def handler_cmd_error(self, err_indicator, err_status, err_index,
-                          var_binds, cmd_id):
+                          var_binds):
         """
         Abstract method reprsenting handler for SNMP CMD failure
 
         Args:
-            cmd_id (int): ID of the current command
+            None
         """
         raise NotImplementedError('Must be implemented in child class')
-    
-    def handler_timeout_error(self, cmd_id):
+
+    def handler_timeout_error(self):
         """
         Abstract method reprsenting handler for timeout failures
 
         Args:
-            cmd_id (int): ID of the current command
+            None
         """
         raise NotImplementedError('Must be implemented in child class')
 
-    def handler_max_attempts_error(self, cmd_id):
+    def handler_max_attempts_error(self):
         """
         Abstract method reprsenting handler for max attempts reached failures
 
         Args:
-            cmd_id (int): ID of the current command
+            None
         """
         raise NotImplementedError('Must be implemented in child class')

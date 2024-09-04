@@ -74,6 +74,8 @@ class SerialListener:
         self.max_attempts = int(CONFIG['SNMP_RETRY']['RETRY_ATTEMPTS'])
         self.retry_delay = int(CONFIG['SNMP_RETRY']['RETRY_DELAY'])
 
+        self.cmd_counter = 0
+
 
     def make_connection(self):
         """
@@ -108,8 +110,11 @@ class SerialListener:
             self.snmp_user.auth, self.snmp_user.priv,
             self.snmp_user.auth_protocol,
             self.snmp_user.priv_procotol,
-            self.timeout, self.max_attempts, self.retry_delay
+            self.timeout, self.max_attempts, self.retry_delay,
+            self.cmd_counter
         )
+
+        self.cmd_counter += 1
 
         # create new coroutine to add task to queue
         self.event_loop.create_task(
@@ -139,8 +144,11 @@ class SerialListener:
             self.snmp_user.auth_protocol, self.snmp_user.priv_procotol,
             self.timeout, self.max_attempts, self.retry_delay,
             object_value, object_identities,
-            outlet_bank, outlet_port
+            outlet_bank, outlet_port,
+            self.cmd_counter
         )
+
+        self.cmd_counter += 1
 
         # create new coroutine to add task to queue
         self.event_loop.create_task(

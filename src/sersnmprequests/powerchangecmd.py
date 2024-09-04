@@ -28,7 +28,8 @@ class PowerChangeCmd(BaseSnmpCmd):
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
                  object_value: any, object_identities: tuple[any,...],
-                 outlet_bank: int, outlet_port: int
+                 outlet_bank: int, outlet_port: int,
+                 cmd_id: int
                  ) -> None:
         """
         Initialization of attributes
@@ -48,6 +49,7 @@ class PowerChangeCmd(BaseSnmpCmd):
             object_identities (tuple[any,...]): object identifiers
             outlet_bank (int): power outlet bank number
             outlet_port (int): power outlet port number
+            cmd_id (int): int representing ID of current command
         """
 
         # Call parent class to initiate attributes
@@ -55,7 +57,7 @@ class PowerChangeCmd(BaseSnmpCmd):
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
                          object_value, object_identities,
-                        )
+                         cmd_id)
 
         # Initialize the bank and port numbers. These values are only used
         # for logging purposes. OID for outlet is already passed in
@@ -104,60 +106,60 @@ class PowerChangeCmd(BaseSnmpCmd):
 
         return results
 
-    def handler_cmd_success(self, cmd_id):
+    def handler_cmd_success(self):
         """
         Handler for SNMP CMD success that logs the result
 
         Args:
-            cmd_id (int): ID of the current command
+            None
         """
 
         logger.info(
             'Command #%d: Successfully set bank %s port %s to %s',
-            cmd_id, self.outlet_bank, self.outlet_port,
+            self.cmd_id, self.outlet_bank, self.outlet_port,
             self.pdu_object.object_value
         )
 
-    def handler_cmd_error(self, err_indicator, err_status, err_index, var_binds, cmd_id):
+    def handler_cmd_error(self, err_indicator, err_status, err_index, var_binds):
         """
         Handler for SNMP CMD failure that logs the failure
 
         Args:
-            cmd_id (int): ID of the current command
+            None
 
         """
         logger.error(
             ('Command #%d Error when setting bank %s port %s to %s.'
              'Engine status: %s. PDU status: %s. MIB status: %s'),
-            cmd_id, self.outlet_bank, self.outlet_port,
+            self.cmd_id, self.outlet_bank, self.outlet_port,
             self.pdu_object.object_value,
             err_indicator, err_status, var_binds[err_index]
         )
 
-    def handler_timeout_error(self, cmd_id):
+    def handler_timeout_error(self):
         """
         Handler for SNMP timeout failure that logs the failure
 
         Args:
-            cmd_id (int): ID of the current command
+            None
 
         """
         logger.error(
             'Command #%d: Timed-out setting bank %s port %s to %s',
-            cmd_id, self.outlet_bank, self.outlet_port,
+            self.cmd_id, self.outlet_bank, self.outlet_port,
             self.pdu_object.object_value
         )
 
-    def handler_max_attempts_error(self, cmd_id):
+    def handler_max_attempts_error(self):
         """
         Handler for max attempts failure that logs the failure
 
         Args:
-            cmd_id (int): ID of the current command
+            None
 
         """
         logger.error(
             'Command #%d: Max retry attempts setting bank %s port %s to %s',
-            cmd_id, self.outlet_bank, self.outlet_port,
+            self.cmd_id, self.outlet_bank, self.outlet_port,
             self.pdu_object.object_value
         )

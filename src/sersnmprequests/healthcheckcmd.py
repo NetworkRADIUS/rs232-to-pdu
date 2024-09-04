@@ -26,7 +26,8 @@ class HealthcheckCmd(BaseSnmpCmd):
                  agent_ip: str, agent_port: int,
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
-                 timeout: int, max_attempts: int, retry_delay: int
+                 timeout: int, max_attempts: int, retry_delay: int,
+                 cmd_id: int
                  ) -> None:
         """
                 Initialization of attributes
@@ -42,13 +43,15 @@ class HealthcheckCmd(BaseSnmpCmd):
             timeout (int): time in seconds before timing-out command
             max_attempts (int): maximum number of attempts for a command
             retry_delay (int): time in seconds before retrying a failed command
+            cmd_id (int): int representing ID of current command
         """
 
         # Call parent class to initiate attributes
         super().__init__(agent_ip, agent_port,
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
-                         None, ['SNMPv2-MIB', 'sysName', 0])
+                         None, ['SNMPv2-MIB', 'sysName', 0],
+                         cmd_id)
 
     async def invoke_cmd(self) -> tuple[ErrorIndication,
                                         str,
@@ -91,17 +94,17 @@ class HealthcheckCmd(BaseSnmpCmd):
 
         return results
 
-    def handler_cmd_success(self, cmd_id):
+    def handler_cmd_success(self):
         """
         Handler for SNMP CMD success that logs the result
 
         Args:
             cmd_id (int): ID of the current command
         """
-        logger.info('Command #%d: PDU health check passed', cmd_id)
+        logger.info('Command #%d: PDU health check passed', self.cmd_id)
 
     def handler_cmd_error(self, err_indicator, err_status, err_index,
-                          var_binds, cmd_id):
+                          var_binds):
         """
         Handler for SNMP CMD failure that logs the failure
 
@@ -112,10 +115,10 @@ class HealthcheckCmd(BaseSnmpCmd):
         logger.error(
             ('Command #%d: Error when performing health check.'
                 'Engine status: %s. PDU status: %s. MIB status: %s'),
-                cmd_id, err_indicator, err_status, var_binds[err_index]
+                self.cmd_id, err_indicator, err_status, var_binds[err_index]
         )
-    
-    def handler_timeout_error(self, cmd_id):
+
+    def handler_timeout_error(self):
         """
         Handler for SNMP timeout failure that logs the failure
 
@@ -123,9 +126,9 @@ class HealthcheckCmd(BaseSnmpCmd):
             cmd_id (int): ID of the current command
 
         """
-        logger.error('Command #%d: Timed-out on health check', cmd_id)
+        logger.error('Command #%d: Timed-out on health check', self.cmd_id)
 
-    def handler_max_attempts_error(self, cmd_id):
+    def handler_max_attempts_error(self):
         """
         Handler for max attempts failure that logs the failure
 
