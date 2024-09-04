@@ -54,7 +54,8 @@ class PowerChangeCmd(BaseSnmpCmd):
         super().__init__(agent_ip, agent_port,
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
-                         object_value, object_identities)
+                         object_value, object_identities,
+                        )
 
         # Initialize the bank and port numbers. These values are only used
         # for logging purposes. OID for outlet is already passed in
@@ -103,60 +104,60 @@ class PowerChangeCmd(BaseSnmpCmd):
 
         return results
 
-    async def run_cmd(self, cmd_id) -> bool:
+    def handler_cmd_success(self, cmd_id):
         """
-        Contains logic for logging and when to invoke SNMP commands
+        Handler for SNMP CMD success that logs the result
 
         Args:
-            cmd_id (int): a numerical ID of the command
-        
-        Returns:
-            boolean representing success/failure. True = success.
+            cmd_id (int): ID of the current command
         """
-        # for loop to go through max attempts
-        for attempt in range(self.max_attempts):
-            try:
 
-                # Uses timeouts
-                async with asyncio.timeout(self.timeout):
-                    result = await self.invoke_cmd()
-                    err_indicator, err_status, err_index, var_binds = result
-
-                # If no errors, return to quit function
-                if not err_indicator and not err_status:
-                    logger.info(
-                        'Command #%d: Successfully set bank %s port %s to %s',
-                        cmd_id, self.outlet_bank, self.outlet_port,
-                        self.pdu_object.object_value
-                    )
-                    return True
-
-                # If error, log error in entirety
-                logger.error(
-                    ('Command #%d Error when setting bank %s port %s to %s.'
-                     'Engine status: %s. PDU status: %s. MIB status: %s'),
-                    cmd_id, self.outlet_bank, self.outlet_port,
-                    self.pdu_object.object_value,
-                    err_indicator, err_status, var_binds[err_index]
-                )
-
-            # On catching timeout, log the error
-            except TimeoutError:
-                logger.error(
-                    'Command #%d: Timed-out setting bank %s port %s to %s',
-                    cmd_id, self.outlet_bank, self.outlet_port,
-                    self.pdu_object.object_value
-                )
-
-            # On retry, first wait for retry delay
-            await asyncio.sleep(self.retry_delay)
-
-        # If app reaches this line, max attempts have been attempted, thus
-        # log the error
-        logger.error(
-            'Command #%d: Max retry attempts setting bank %s port %s to %s',
-             cmd_id, self.outlet_bank, self.outlet_port,
-             self.pdu_object.object_value
+        logger.info(
+            'Command #%d: Successfully set bank %s port %s to %s',
+            cmd_id, self.outlet_bank, self.outlet_port,
+            self.pdu_object.object_value
         )
 
-        return False
+    def handler_cmd_error(self, err_indicator, err_status, err_index, var_binds, cmd_id):
+        """
+        Handler for SNMP CMD failure that logs the failure
+
+        Args:
+            cmd_id (int): ID of the current command
+
+        """
+        logger.error(
+            ('Command #%d Error when setting bank %s port %s to %s.'
+             'Engine status: %s. PDU status: %s. MIB status: %s'),
+            cmd_id, self.outlet_bank, self.outlet_port,
+            self.pdu_object.object_value,
+            err_indicator, err_status, var_binds[err_index]
+        )
+
+    def handler_timeout_error(self, cmd_id):
+        """
+        Handler for SNMP timeout failure that logs the failure
+
+        Args:
+            cmd_id (int): ID of the current command
+
+        """
+        logger.error(
+            'Command #%d: Timed-out setting bank %s port %s to %s',
+            cmd_id, self.outlet_bank, self.outlet_port,
+            self.pdu_object.object_value
+        )
+
+    def handler_max_attempts_error(self, cmd_id):
+        """
+        Handler for max attempts failure that logs the failure
+
+        Args:
+            cmd_id (int): ID of the current command
+
+        """
+        logger.error(
+            'Command #%d: Max retry attempts setting bank %s port %s to %s',
+            cmd_id, self.outlet_bank, self.outlet_port,
+            self.pdu_object.object_value
+        )

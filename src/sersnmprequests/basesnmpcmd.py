@@ -11,6 +11,7 @@ Author: Patrick Guo
 Date: 2024-08-28
 """
 from dataclasses import dataclass
+import asyncio
 
 import pysnmp.hlapi.asyncio as pysnmp
 from pysnmp.proto.errind import ErrorIndication
@@ -129,15 +130,68 @@ class BaseSnmpCmd:
 
     async def run_cmd(self, cmd_id: int) -> bool:
         """
-        Abstract method that contains logic for when to call the pysnmp
-        commands.
-
-        Should not actually invoke these functions here.
+        Control flow method that calls invoke_cmd and error/success handlers
 
         Args:
             cmd_id (int): a numerical ID of the command
         
         Returns:
             boolean representing success/failure. True = success.
+        """
+        for _attempt in range(self.max_attempts):
+            try:
+                async with asyncio.timeout(self.timeout):
+                    result = await self.invoke_cmd()
+                    err_indicator, err_status, err_index, var_binds = result
+
+                if not err_indicator or err_status:
+                    self.handler_cmd_success(cmd_id)
+                    return True
+                
+                self.handler_cmd_error(err_indicator, err_status, err_index, var_binds, cmd_id)
+            except TimeoutError:
+                self.handler_timeout_error(cmd_id)
+            await asyncio.sleep(self.retry_delay)
+        
+        # If for loop is exited, max retry attempts have been reached, thus
+        # max attemp error has occured
+        self.handler_max_attempts_error(cmd_id)
+        return False
+    
+
+    def handler_cmd_success(self, cmd_id: int) -> None:
+        """
+        Abstract method reprsenting handler for SNMP CMD success
+
+        Args:
+            cmd_id (int): ID of the current command
+        """
+        raise NotImplementedError('Must be implemented in child class')
+
+    def handler_cmd_error(self, err_indicator, err_status, err_index,
+                          var_binds, cmd_id):
+        """
+        Abstract method reprsenting handler for SNMP CMD failure
+
+        Args:
+            cmd_id (int): ID of the current command
+        """
+        raise NotImplementedError('Must be implemented in child class')
+    
+    def handler_timeout_error(self, cmd_id):
+        """
+        Abstract method reprsenting handler for timeout failures
+
+        Args:
+            cmd_id (int): ID of the current command
+        """
+        raise NotImplementedError('Must be implemented in child class')
+
+    def handler_max_attempts_error(self, cmd_id):
+        """
+        Abstract method reprsenting handler for max attempts reached failures
+
+        Args:
+            cmd_id (int): ID of the current command
         """
         raise NotImplementedError('Must be implemented in child class')
