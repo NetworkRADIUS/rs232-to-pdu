@@ -221,12 +221,12 @@ class BaseParser:
         start_pos = self.cursor_pos
 
         parsed_number = self.search_positive_number()
-        if parsed_number > 256:
+        if parsed_number >= 256:
             # reset staring pos and raise error if integer parsed is larger
             # than 256
             self.cursor_pos = start_pos
             logger.error('No uint8 number found for "%s" at position %s',
-                         self.buffer, self.text_post)
+                         self.buffer, self.cursor_pos)
             raise ParseError(self.buffer, start_pos,
                              'Parsed integer larger than a uint8')
 

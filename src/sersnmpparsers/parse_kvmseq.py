@@ -117,7 +117,7 @@ class ParserKvmSequence(BaseParser):
         returns:
             None
         """
-        return None
+        return None,
 
     def parse_em_sequence(self):
         """
@@ -126,7 +126,7 @@ class ParserKvmSequence(BaseParser):
         returns:
             None
         """
-        return None, None
+        return None,
 
     def search_for_bank(self):
         """

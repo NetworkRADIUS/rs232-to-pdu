@@ -181,6 +181,7 @@ class SerialListener:
         self.scheduler.start()
 
         self.event_loop.run_forever()
+        print('Hello')
 
     def read_serial_conn(self):
         """
