@@ -35,6 +35,17 @@ class ParserKvmSequence(BaseParser):
     Parser to turn string sequence into a command
     """
 
+    def __init__(self):
+        super().__init__()
+
+        self.parse_funcs = {
+            'on': self.parse_on_sequence,
+            'of': self.parse_of_sequence,
+            'cy': self.parse_cy_sequence,
+            'quit': self.parse_qu_sequence,
+            '': self.parse_em_sequence
+        }
+
     def parse(self, buffer: str) -> list[str, int, int]:
         """
         Entry point for parsing
@@ -53,58 +64,84 @@ class ParserKvmSequence(BaseParser):
         self.buffer = buffer
         self.cursor_pos = 0
 
-        return self.match_rule(self.rule_token_command)
+        # Find which command sequence we are looking for
+        command = self.keyword('on', 'of', 'cy', 'quit', '')
+        self.remove_leading_whitespace()
 
-    # def start(self) -> None:
-    #     """
-    #     Defines state machine
+        # Call the appropriate function to parse for speicifc sequence
+        # and store the tokens parsed
+        sequence_tokens = self.parse_funcs[command]()
 
-    #     Returns:
-    #         None
-    #     """
-    #     return self.match_rule(self.rule_token_command)
+        # Check if sequence is terminated by \r
+        self.keyword('\r')
 
-    def rule_token_command(self) -> str:
+        # Return command and sequence tokens
+        # Unzip sequence tokens to return 1D list containing all tokens
+        return command, *sequence_tokens
+
+    def parse_on_sequence(self):
         """
-        Parser rule that looks for the command tokens as a keyword
+        Method for finding an ON sequence
 
-        Possible values: [on, of]. No typo here: actually 'off' with 1 'f'
-
-        Returns:
-            Matched keyword
+        returns:
+            bank (int)
+            port (int)
         """
-        logger.debug('Looking for command token for "%s" at position %s',
-                     self.buffer, self.cursor_pos)
-        command_token = self.keyword('on', 'of', 'cy', 'quit', '')
-        if command_token in ['quit', '']:
-            return None, None, None
+        return self.search_for_bank()
 
-        return command_token, *self.match_rule(self.rule_token_bank)
-
-    def rule_token_bank(self) -> int:
+    def parse_of_sequence(self):
         """
-        Parser rule that looks for a bank token as uint8 value
+        Method for finding an OF sequence
 
-        Possible values: [1-256]
-
-        Returns:
-            Integer in uint8 range
+        returns:
+            bank (int)
+            port (int)
         """
-        logger.debug('Looking for bank token for "%s" at position %s',
-                     self.buffer, self.cursor_pos)
-        bank_value = self.search_uint8()
-        return bank_value, self.match_rule(self.rule_token_port)
 
-    def rule_token_port(self) -> int:
+        return self.search_for_bank()
+
+    def parse_cy_sequence(self):
         """
-        Parser rule that looks for a port token as uint8 value
+        Method for finding a CY sequence
 
-        Possible values: [1-256]
-
-        Returns:
-            Integer in uint8 range
+        returns:
+            bank (int)
+            port (int)
         """
-        logger.debug('Looking for port token for "%s" at position %s',
-                     self.buffer, self.cursor_pos)
-        port_value = self.search_uint8()
-        return port_value
+        return self.search_for_bank()
+
+    def parse_qu_sequence(self):
+        """
+        Method for finding a QUIT sequence
+
+        returns:
+            None
+        """
+        return None
+
+    def parse_em_sequence(self):
+        """
+        Method for finding an EMPTY sequence
+
+        returns:
+            None
+        """
+        return None, None
+
+    def search_for_bank(self):
+        """
+        Method for finding a bank token
+
+        returns:
+            bank (int)
+        """
+        return self.search_uint8(), self.search_for_port()
+
+    def search_for_port(self):
+        """
+        Method for finding a port token
+
+        returns:
+            port (int)
+        """
+        return self.search_uint8()

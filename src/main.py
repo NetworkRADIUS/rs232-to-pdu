@@ -199,7 +199,7 @@ class SerialListener:
         curr_seq_start_pos = 0
 
         # Iterate through entire read buffer
-        for i, buffer_char in enumerate(self.read_buffer):
+        for cursor_pos, buffer_char in enumerate(self.read_buffer):
 
             # If the \r char is encountered, attempt to parse sequence
             if buffer_char == '\r':
@@ -207,13 +207,14 @@ class SerialListener:
                     logger.debug('Received command sequence: "%s"',
                                 ''.join(self.read_buffer))
                     # Attempt to parse part of read buffer containing sequence
-                    cmd, bank, port = self.kvm_parser.parse(''.join(self.read_buffer[curr_seq_start_pos:i]))
+                    parsed_tokens = self.kvm_parser.parse(''.join(self.read_buffer[curr_seq_start_pos:cursor_pos + 1]))
 
                     # Upon encountering quit and empty sequence, do nothing
-                    if cmd in ['quit', '']:
+                    if parsed_tokens[0] in ['quit', '']:
                         logger.info('Quit or empty sequence detected')
                         return
-
+                    
+                    cmd, bank, port = parsed_tokens
                     logger.info('Setting Bank %s Port %s to %s',
                                 bank, port, cmd.upper())
 
@@ -243,7 +244,7 @@ class SerialListener:
                 except ParseError:
                     logger.warning('Parser failed to parse: "%s"',
                                 ''.join(self.read_buffer))
-                curr_seq_start_pos = i + 1
+                curr_seq_start_pos = cursor_pos + 1
 
         # Delete parsed portion of buffer
         # Note that we do not attempt to re-parse failed sequences because
