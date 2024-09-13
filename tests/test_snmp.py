@@ -9,22 +9,31 @@ import subprocess
 import os
 import time
 import signal
+import configparser
+import pathlib
+
+
 
 
 class TestSnmpCmds(unittest.TestCase):
     @classmethod
     def setUp(cls):
-        cls.target_ip = 'localhost'
-        cls.target_port = '161'
-        cls.username = 'aesuser'
-        cls.authpass = 'authpassphrase'
-        cls.privpass = 'privpassphrase'
-        cls.authprot = pysnmp.usmHMACMD5AuthProtocol
-        cls.privprot = pysnmp.usmAesCfb128Protocol
+        config_file = pathlib.Path('tests/test_config.ini')
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        
+        cls.target_ip = str(config['SNMP AGENT LOCATION']['ip'])
+        cls.target_port = int(config['SNMP AGENT LOCATION']['port'])
+
+        cls.username = config['SNMP USER']['username']
+        cls.authpass = config['SNMP USER']['authpass']
+        cls.privpass = config['SNMP USER']['privpass']
+        cls.authprot = pysnmp.usmHMACMD5AuthProtocol if config['SNMP USER']['authprot'] == 'MD5' else None
+        cls.privprot = pysnmp.usmAesCfb128Protocol if config['SNMP USER']['privprot'] == 'AES' else None
         cls.target_obj = ('SNMPv2-MIB', 'sysName', 0)
-        cls.timeout = 1
-        cls.max_attempts = 1
-        cls.retry_delay = 5
+        cls.timeout = int(config['SNMP AGENT LOCATION']['timeout'])
+        cls.max_attempts = int(config['SNMP AGENT LOCATION']['max_attempts'])
+        cls.retry_delay = int(config['SNMP AGENT LOCATION']['retry_delay'])
         cls.outlet_bank = 1
         cls.outlet_port = 1
 
