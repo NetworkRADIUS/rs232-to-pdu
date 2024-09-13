@@ -48,6 +48,7 @@ class SerialConnection:
             logger.info(('Serial port opened, device %s, baud %s, timeout %s, '
                          'Software Flow Control %s'),
                          port, baud, timeout, xonxoff)
+            # Checks if connection was actually opened
             return not self.ser is None
         except SerialException as e:
             logger.info(('Serial port failed to open: device %s, baud%s, '
@@ -67,5 +68,14 @@ class SerialConnection:
         """
         return self.ser.read(self.ser.in_waiting).decode(ENCODING)
 
-    def close_connection(self):
+    def close_connection(self) -> str:
+        """
+        Closes connection with serial port
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         self.ser.close()
