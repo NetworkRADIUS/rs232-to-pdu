@@ -87,7 +87,7 @@ class ParserKvmSequence(BaseParser):
             bank (int)
             port (int)
         """
-        return self.search_for_bank()
+        return self.search_for_bank(), self.search_for_port()
 
     def parse_of_sequence(self):
         """
@@ -98,7 +98,7 @@ class ParserKvmSequence(BaseParser):
             port (int)
         """
 
-        return self.search_for_bank()
+        return self.search_for_bank(), self.search_for_port()
 
     def parse_cy_sequence(self):
         """
@@ -108,7 +108,7 @@ class ParserKvmSequence(BaseParser):
             bank (int)
             port (int)
         """
-        return self.search_for_bank()
+        return self.search_for_bank(), self.search_for_port()
 
     def parse_qu_sequence(self):
         """
@@ -135,7 +135,7 @@ class ParserKvmSequence(BaseParser):
         returns:
             bank (int)
         """
-        return self.search_uint8(), self.search_for_port()
+        return self.search_uint8()
 
     def search_for_port(self):
         """

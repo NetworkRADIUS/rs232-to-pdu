@@ -27,7 +27,7 @@ class HealthcheckCmd(BaseSnmpCmd):
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
-                 cmd_id: int
+                 cmd_id: int, target_obj = None
                  ) -> None:
         """
                 Initialization of attributes
@@ -46,11 +46,14 @@ class HealthcheckCmd(BaseSnmpCmd):
             cmd_id (int): int representing ID of current command
         """
 
+        if target_obj is None:
+            target_obj = ('SNMPv2-MIB', 'sysName', 0)
+
         # Call parent class to initiate attributes
         super().__init__(agent_ip, agent_port,
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
-                         None, ['SNMPv2-MIB', 'sysName', 0],
+                         None, target_obj,
                          cmd_id)
 
     async def invoke_cmd(self) -> tuple[ErrorIndication,
@@ -115,7 +118,7 @@ class HealthcheckCmd(BaseSnmpCmd):
         logger.error(
             ('Command #%d: Error when performing health check.'
                 'Engine status: %s. PDU status: %s. MIB status: %s'),
-                self.cmd_id, err_indicator, err_status, var_binds[err_index]
+                self.cmd_id, err_indicator, err_status, var_binds
         )
 
     def handler_timeout_error(self):

@@ -71,61 +71,6 @@ class BaseParser:
 
             self.cursor_pos += 1
 
-    def match_rule(self, *rule_funcs: Callable) -> str:
-        """
-        Attempts to match parser based on given rules
-
-        Args:
-            rule_funcs: array of functions to call
-        
-        Returns:
-            Matched token (str)
-        
-        Raises:
-            ParseError: raised if none of the rules matched
-        """
-        # In the case of multiple rules producing an error message, we want to
-        # produce the error message for the rule that reached the furthest
-        furthest_error_pos = -1
-        furthest_exception = None
-        furthest_errored_rules = []
-
-        for rule_func in rule_funcs:
-            logger.debug('Attempting to match rule %s for "%s" at position %s',
-                         rule_func, self.buffer, self.cursor_pos)
-            init_pos = self.cursor_pos
-            try:
-                # Get function with same name as inputted rule
-                return rule_func()
-
-            # rules will fail if could not find match
-            except ParseError as e:
-                logger.warning('Failed to match rule %s for "%s" at position %s',
-                               rule_func.__name__, self.buffer, self.cursor_pos)
-                # reset cursor position to prior to matching the rule
-                self.cursor_pos = init_pos
-
-                if e.pos > furthest_error_pos:
-                    furthest_error_pos = e.pos
-                    furthest_exception = e
-
-                    furthest_errored_rules.clear()
-                    furthest_errored_rules.append(rule_func.__name__)
-                # In event of multiple rules reaching same position, report all
-                elif e.pos == furthest_error_pos:
-                    furthest_errored_rules.append(rule_func.__name__)
-
-        logger.error('Failed to match all rules: %s for "%s" at position %s',
-                     ', '.join([rule_func.__name__ for rule_func in rule_funcs]), self.buffer, self.cursor_pos)
-        # If all rules failed, raise exception caused by furthest reaching rule
-        if len(furthest_errored_rules) == 1:
-            raise furthest_exception
-        if len(furthest_errored_rules) > 1:
-            error_msg = (f'{", ".join(furthest_errored_rules)} '
-                         f'all failed to match')
-            raise ParseError(self.buffer, self.cursor_pos, error_msg)
-        return None
-
     def keyword(self, *keywords: tuple[str,...],
                 remove_leading_whitespace: bool = True) -> str:
         """

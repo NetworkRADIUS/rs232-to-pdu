@@ -9,9 +9,14 @@ import asyncio
 import configparser
 import enum
 import pathlib
+import time
+import systemd_watchdog as sysdwd
 
 import pysnmp.hlapi.asyncio as pysnmp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from typing import Callable
 
 import sersnmplogging.loggingfactory as nrlogfac
 from sersnmpconnectors.conn_serial import SerialConnection
@@ -21,6 +26,7 @@ from sersnmprequests.basesnmpcmd import AgentLocator, SnmpUser
 from sersnmprequests.healthcheckcmd import HealthcheckCmd
 from sersnmprequests.powerchangecmd import PowerChangeCmd
 from sersnmprequests.snmpcmdrunner import SnmpCmdRunner
+from sersnmpscheduler.sersnmpscheduler import ListenerScheduler
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('config.ini')
@@ -39,6 +45,14 @@ class PowerbarValues(enum.Enum):
     ON = 2
     CYCLE = 3
 
+class LookForFileEH(FileSystemEventHandler):
+    def __init__(self, file_to_watch, callback: Callable) -> None:
+        self.file_to_watch = file_to_watch
+        self.callback_when_found = callback
+
+    def on_created(self, event):
+        if event.src_path == self.file_to_watch:
+            self.callback_when_found()
 
 class SerialListener:
     """
@@ -49,8 +63,14 @@ class SerialListener:
         self.kvm_parser = ParserKvmSequence()
         self.snmp_cmd_runner = SnmpCmdRunner()
 
-        self.event_loop = None
-        self.scheduler = None
+        self.event_loop = asyncio.new_event_loop()
+        self.scheduler = ListenerScheduler(self.event_loop)
+        self.file_watchdog = None
+
+        self.sysdwd = sysdwd.watchdog()
+
+        # if not self.sysdwd.is_enabled:
+        #     raise OSError('Systemd watchdog not enabled')
 
         # Create serial connection
         self.serial_conn = SerialConnection()
@@ -87,11 +107,51 @@ class SerialListener:
         Returns:
             None
         """
+        self.sysdwd.status('Openning serial port')
+
         # Makes the connection
         serial_port    = CONFIG['SERIAL_CONFIGS']['SERIAL_PORT']
         serial_timeout = int(CONFIG['SERIAL_CONFIGS']['TIMEOUT'])
-        self.serial_conn.make_connection(serial_port, timeout=serial_timeout)
+        if self.serial_conn.make_connection(serial_port,
+                                            timeout=serial_timeout):
+            self.sysdwd.status('Serial port successfully opened')
+            return True
+        self.sysdwd.status('Serial port failed to open')
+        return False
 
+    def close_connection(self):
+        self.sysdwd.status('Closing serial port')
+        self.serial_conn.close_connection()
+        self.sysdwd.status('Serial port closed')
+    
+    def attempt_reconnect(self):
+        time.sleep(0.5)
+        if self.make_connection():
+            self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
+            self.scheduler.remove_reconnect_job()
+            self.file_watchdog.stop()
+
+    def serial_error_handler(self, loop, context):
+        match type(context['exception']):
+            case OSError:
+                loop.remove_reader(self.serial_conn.ser)
+                self.close_connection()
+
+                self.scheduler.start_reconnect_job(self.attempt_reconnect)
+
+                watch_path = '/'.join(
+                    CONFIG['SERIAL_CONFIGS']['SERIAL_PORT'].split('/')[:-1]
+                )
+                self.file_watchdog = Observer()
+                self.file_watchdog.schedule(
+                    LookForFileEH(CONFIG['SERIAL_CONFIGS']['SERIAL_PORT'],
+                                self.attempt_reconnect
+                    ),
+                    watch_path
+                )
+                self.file_watchdog.start()
+                self.file_watchdog.join()
+    
     def add_healthcheck_to_queue(self) -> None:
         """
         Adds a health check command to the priority queue with high priority
@@ -155,7 +215,7 @@ class SerialListener:
             self.snmp_cmd_runner.put_into_queue(new_cmd)
         )
 
-    def start_listening(self):
+    def start(self):
         """
         Entry point for starting listener
 
@@ -167,21 +227,29 @@ class SerialListener:
         Returns:
             None
         """
-        self.event_loop = asyncio.new_event_loop()
+        self.sysdwd.status('Initiating application')
+
+        while not self.make_connection():
+            time.sleep(self.timeout)
+
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
 
         self.event_loop.create_task(
             self.snmp_cmd_runner.queue_processor(self.event_loop)
         )
+        self.event_loop.set_exception_handler(self.serial_error_handler)
 
-        # # Create and start the scheduler for running healthchecks
-        self.scheduler = AsyncIOScheduler(event_loop=self.event_loop)
-        self.scheduler.add_job(
-            self.add_healthcheck_to_queue, 'interval', [], seconds=5)
+        self.scheduler.start_healthcheck_job(self.add_healthcheck_to_queue)
+        self.scheduler.start_systemd_notify(self.sysdwd.notify, self.sysdwd.timeout / 2e6)
         self.scheduler.start()
 
-        self.event_loop.run_forever()
-        print('Hello')
+        try:
+            self.event_loop.run_forever()
+        except KeyboardInterrupt:
+            self.close_connection()
+            self.event_loop.stop()
+            self.scheduler.shutdown(False)
+            self.sysdwd.status('Shutting down application')
 
     def read_serial_conn(self):
         """
@@ -254,5 +322,4 @@ class SerialListener:
 
 if __name__ == '__main__':
     serial_listerner = SerialListener()
-    serial_listerner.make_connection()
-    serial_listerner.start_listening()
+    serial_listerner.start()

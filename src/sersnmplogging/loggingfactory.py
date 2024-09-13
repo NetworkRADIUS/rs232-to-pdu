@@ -31,21 +31,6 @@ def setup_logging() -> None:
     # Loads config using json (dictionary) object
     logging.config.dictConfig(config)
 
-
-def add_handler_to_nwkrad_root_logger(handler: logging.FileHandler) -> None:
-    """
-    Add a handler to the nwkrad logger - which all other loggers is a child of
-
-    Args:
-        handler (FileHandler): file handler to be added
-
-    Returns:
-        None
-    """
-    nwkrad_logger = logging.getLogger('nwkrad')
-    nwkrad_logger.addHandler(handler)
-
-
 def create_logger(
     name: str,
     level: int = logging.INFO,

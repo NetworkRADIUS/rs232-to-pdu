@@ -133,7 +133,7 @@ class PowerChangeCmd(BaseSnmpCmd):
              'Engine status: %s. PDU status: %s. MIB status: %s'),
             self.cmd_id, self.outlet_bank, self.outlet_port,
             self.pdu_object.object_value,
-            err_indicator, err_status, var_binds[err_index]
+            err_indicator, err_status, var_binds[err_index] if var_binds else None
         )
 
     def handler_timeout_error(self):

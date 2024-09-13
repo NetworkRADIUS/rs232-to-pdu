@@ -150,7 +150,7 @@ class BaseSnmpCmd:
 
                 if not err_indicator or err_status:
                     self.handler_cmd_success()
-                    return True
+                    return var_binds
 
                 self.handler_cmd_error(err_indicator, err_status, err_index, var_binds)
             except TimeoutError:
