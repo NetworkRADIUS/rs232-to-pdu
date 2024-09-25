@@ -25,31 +25,31 @@ Note that the SNMP agent may "flatten" multiple banks into seemingly a single ba
 This tool expects a configuration file called ```config.ini```, placed under ```src/```. This file must conform the INI format and have the following sections.
 
 #### ```SERIAL_CONFIGS```
-```SERIAL_PORT```: string value of file location of serial port
+```SERIAL_PORT```: string value of file location of serial port\
 ```TIMEOUT```: time in seconds before timing out serial connection
 
 ####  ```PDU_AUTH```
-```USER```: string value of SNMP user name
-```AUTH```: string value of authentication protocol
-```AUTH_PASSPHRASE```: string value of authentication passphrase
-```PRIV```: string value of privacy protocol
+```USER```: string value of SNMP user name\
+```AUTH```: string value of authentication protocol\
+```AUTH_PASSPHRASE```: string value of authentication passphrase\
+```PRIV```: string value of privacy protocol\
 ```PRIV_PASSPHRASE```: string value of privacy passphrase
 
 #### ```PDU_LOCATION```
-```IP_ADDRESS```: string value of IP address of SNMP agent
+```IP_ADDRESS```: string value of IP address of SNMP agent\
 ```PORT```: integer value of network port of SNMP agent
 
 #### ```SNMP_RETRY```
-```MAX_ATTEMPTS```: integer value of number of maximum attempts for an SNMP command
+```MAX_ATTEMPTS```: integer value of number of maximum attempts for an SNMP command\
 ```RETRY_DELAY```: time in seconds to wait before attempting a retry after a SNMP command failure
 ```TIMEOUT```: time in seconds before timing out SNMP command
 
 In addition to the above sections, each power bank must have its own section, titled as ```BANK<# padded to 3 digits>```. Within each of these sections, each port must have its own attribute, titled as ```PORT<# padded to 3 digits>```. The value of each of these attributes must be the matching ```OID``` for the port. A sample section is provided below.
 
 #### ```[BANK001]```
-```PORT001 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.1```
-```PORT002 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.2```
-```PORT003 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.3```
+```PORT001 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.1```\
+```PORT002 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.2```\
+```PORT003 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.3```\
 ```PORT004 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.4```
 
 ---
