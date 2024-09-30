@@ -91,7 +91,7 @@ class SerialListener:
 
         self.timeout = int(CONFIG['SNMP_RETRY']['TIMEOUT'])
 
-        self.max_attempts = int(CONFIG['SNMP_RETRY']['RETRY_ATTEMPTS'])
+        self.max_attempts = int(CONFIG['SNMP_RETRY']['MAX_ATTEMPTS'])
         self.retry_delay = int(CONFIG['SNMP_RETRY']['RETRY_DELAY'])
 
         self.cmd_counter = 0

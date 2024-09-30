@@ -8,12 +8,11 @@ The RS-232 to Tripplite PDU tool allows admins to send byte strings through an R
 
 This tool expects commands conforming to the grammar below.
 
-Turn outlet on: ```on <bank> <port>```
-Turn outlet off: ```of <bank> <port>```
+Turn outlet on: ```on <bank> <port>```\
+Turn outlet off: ```of <bank> <port>```\
 Cycle (restart) outlet: ```cy <bank> <port>```
 
-In all cases, ```<bank>``` and ```<port>``` are expected to be ```uint8``` values
-
+In all cases, ```<bank>``` and ```<port>``` are expected to be ```uint8``` values.\
 In all cases, this tool will send a ```SET``` command to the SNMP agent.
 
 Note that the SNMP agent may "flatten" multiple banks into seemingly a single bank, with the ports being serialized.
