@@ -1,0 +1,12 @@
+[Unit]
+Description = A tool to convert serial-232 buffers into SNMP commands and requests for Tripplite power cables
+Documentation = README.md
+
+[Service]
+Type=simple
+ExecStart=.../src/main.py
+Restart=on-watchdog
+ExecStart = ../src/start.py
+
+[Install]
+Alias=sersnmp
