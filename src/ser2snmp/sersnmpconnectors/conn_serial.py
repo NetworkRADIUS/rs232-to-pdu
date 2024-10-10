@@ -7,8 +7,6 @@ Date: 2024-08-23
 import serial
 import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
 from serial.serialutil import SerialException
-import time
-import os
 
 LOG_FILE = './serialconnections.log'
 LOG_NAME = 'Serial Connection'

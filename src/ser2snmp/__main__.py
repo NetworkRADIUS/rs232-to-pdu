@@ -5,7 +5,6 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import asyncio
-import configparser
 import enum
 import pathlib
 import time
@@ -15,21 +14,22 @@ import pysnmp.hlapi.asyncio as pysnmp
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from typing import Callable
+import yaml
 
 import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
 from ser2snmp.sersnmpconnectors.conn_serial import SerialConnection
 from ser2snmp.sersnmpparsers.parse_base import ParseError
 from ser2snmp.sersnmpparsers.parse_kvmseq import ParserKvmSequence
-from ser2snmp.sersnmprequests.basesnmpcmd import AgentLocator, SnmpUser
+from ser2snmp.sersnmprequests.basesnmpcmd import SnmpUser
 from ser2snmp.sersnmprequests.healthcheckcmd import HealthcheckCmd
 from ser2snmp.sersnmprequests.powerchangecmd import PowerChangeCmd
 from ser2snmp.sersnmprequests.snmpcmdrunner import SnmpCmdRunner
 from ser2snmp.sersnmpscheduler.sersnmpscheduler import ListenerScheduler
 
 # Read and setup configs
-CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.ini')
-CONFIG = configparser.ConfigParser()
-CONFIG.read(CONFIG_FILE)
+CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')
+with open(CONFIG_FILE, 'r', encoding='utf-8')as fileopen:
+    CONFIG = yaml.load(fileopen, Loader=yaml.FullLoader)
 
 # Set up logger for this module
 nrlogfac.setup_logging()
@@ -71,21 +71,18 @@ class SerialListener:
         # Initialization of other variables to be used in class
         self.read_buffer = []
 
-        # Reads configs
-        self.agent_loc = AgentLocator(CONFIG['PDU_LOCATION']['IP_ADDRESS'],
-                                      int(CONFIG['PDU_LOCATION']['PORT']))
         self.snmp_user = SnmpUser(
-            CONFIG['PDU_AUTH']['USER'],
-            CONFIG['PDU_AUTH']['AUTH_PASSPHRASE'],
-            CONFIG['PDU_AUTH']['PRIV_PASSPHRASE'],
-            pysnmp.usmHMACSHAAuthProtocol if CONFIG['PDU_AUTH']['AUTH'] == 'SHA' else None,
-            pysnmp.usmAesCfb128Protocol if CONFIG['PDU_AUTH']['PRIV'] == 'AES' else None
+            CONFIG['pdu_auth']['user'],
+            CONFIG['pdu_auth']['auth_passphrase'],
+            CONFIG['pdu_auth']['priv_passphrase'],
+            pysnmp.usmHMACSHAAuthProtocol if CONFIG['pdu_auth']['auth'] == 'SHA' else None,
+            pysnmp.usmAesCfb128Protocol if CONFIG['pdu_auth']['priv'] == 'AES' else None
         )
 
-        self.timeout = int(CONFIG['SNMP_RETRY']['TIMEOUT'])
+        self.timeout = int(CONFIG['snmp_retry']['timeout'])
 
-        self.max_attempts = int(CONFIG['SNMP_RETRY']['MAX_ATTEMPTS'])
-        self.retry_delay = int(CONFIG['SNMP_RETRY']['RETRY_DELAY'])
+        self.max_attempts = int(CONFIG['snmp_retry']['max_attempts'])
+        self.retry_delay = int(CONFIG['snmp_retry']['retry_delay'])
 
         self.cmd_counter = 0
 
@@ -104,8 +101,8 @@ class SerialListener:
         self.sysdwd.status('Openning serial port')
 
         # Makes the connection
-        serial_port    = CONFIG['SERIAL_CONFIGS']['SERIAL_PORT']
-        serial_timeout = int(CONFIG['SERIAL_CONFIGS']['TIMEOUT'])
+        serial_port    = CONFIG['serial_configs']['serial_port']
+        serial_timeout = int(CONFIG['serial_configs']['timeout'])
         if self.serial_conn.make_connection(serial_port,
                                             timeout=serial_timeout):
             self.sysdwd.status('Serial port successfully opened')
@@ -117,7 +114,7 @@ class SerialListener:
         self.sysdwd.status('Closing serial port')
         self.serial_conn.close_connection()
         self.sysdwd.status('Serial port closed')
-    
+
     def attempt_reconnect(self):
         time.sleep(0.5)
         if self.make_connection():
@@ -134,18 +131,18 @@ class SerialListener:
                 self.scheduler.start_reconnect_job(self.attempt_reconnect)
 
                 watch_path = '/'.join(
-                    CONFIG['SERIAL_CONFIGS']['SERIAL_PORT'].split('/')[:-1]
+                    CONFIG['serial_configs']['serial_port'].split('/')[:-1]
                 )
                 self.file_watchdog = Observer()
                 self.file_watchdog.schedule(
-                    LookForFileEH(CONFIG['SERIAL_CONFIGS']['SERIAL_PORT'],
+                    LookForFileEH(CONFIG['serial_configs']['serial_port'],
                                 self.attempt_reconnect
                     ),
                     watch_path
                 )
                 self.file_watchdog.start()
                 self.file_watchdog.join()
-    
+
     def add_healthcheck_to_queue(self) -> None:
         """
         Adds a health check command to the priority queue with high priority
@@ -156,27 +153,31 @@ class SerialListener:
         Returns:
             None
         """
+        for bank_num in CONFIG['banks'].keys():
+            agent_ip = CONFIG['banks'][bank_num]['ip_address']
+            agent_port = int(CONFIG['banks'][bank_num]['snmp_port'])
 
-        # create new command object
-        new_cmd = HealthcheckCmd(
-            self.agent_loc.agent_ip, self.agent_loc.agent_port,
-            self.snmp_user.username,
-            self.snmp_user.auth, self.snmp_user.priv,
-            self.snmp_user.auth_protocol,
-            self.snmp_user.priv_procotol,
-            self.timeout, self.max_attempts, self.retry_delay,
-            self.cmd_counter
-        )
+            # create new command object
+            new_cmd = HealthcheckCmd(
+                agent_ip, agent_port,
+                self.snmp_user.username,
+                self.snmp_user.auth, self.snmp_user.priv,
+                self.snmp_user.auth_protocol,
+                self.snmp_user.priv_procotol,
+                self.timeout, self.max_attempts, self.retry_delay,
+                self.cmd_counter, bank_num=bank_num
+            )
 
-        self.cmd_counter += 1
+            self.cmd_counter += 1
 
-        # create new coroutine to add task to queue
-        self.event_loop.create_task(
-            self.snmp_cmd_runner.put_into_queue(new_cmd, True)
-        )
+            # create new coroutine to add task to queue
+            self.event_loop.create_task(
+                self.snmp_cmd_runner.put_into_queue(new_cmd, True)
+            )
 
     def add_power_change_to_queue(
             self,
+            agent_ip: str, agent_port: int,
             object_value: int, object_identities: str,
             outlet_bank: int, outlet_port: int
         ) -> None:
@@ -192,7 +193,7 @@ class SerialListener:
 
         # create new command object
         new_cmd = PowerChangeCmd(
-            self.agent_loc.agent_ip, self.agent_loc.agent_port,
+            agent_ip, agent_port,
             self.snmp_user.username,
             self.snmp_user.auth, self.snmp_user.priv,
             self.snmp_user.auth_protocol, self.snmp_user.priv_procotol,
@@ -234,7 +235,9 @@ class SerialListener:
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
         self.scheduler.start_healthcheck_job(self.add_healthcheck_to_queue)
-        self.scheduler.start_systemd_notify(self.sysdwd.notify, self.sysdwd.timeout / 2e6)
+        self.scheduler.start_systemd_notify(
+            self.sysdwd.notify, self.sysdwd.timeout / 2e6
+        )
         self.scheduler.start()
 
         try:
@@ -267,34 +270,43 @@ class SerialListener:
                     logger.debug('Received command sequence: "%s"',
                                 ''.join(self.read_buffer))
                     # Attempt to parse part of read buffer containing sequence
-                    parsed_tokens = self.kvm_parser.parse(''.join(self.read_buffer[curr_seq_start_pos:cursor_pos + 1]))
+                    parsed_tokens = self.kvm_parser.parse(
+                        ''.join(
+                            self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
+                        )
+                    )
 
                     # Upon encountering quit and empty sequence, do nothing
                     if parsed_tokens[0] in ['quit', '']:
                         logger.info('Quit or empty sequence detected')
                         return
-                    
+
                     cmd, bank, port = parsed_tokens
                     logger.info('Setting Bank %s Port %s to %s',
                                 bank, port, cmd.upper())
 
-                    obj_oid = (CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}'],)
+                    agent_ip = CONFIG['banks'][f'{bank:03d}']['ip_address']
+                    agent_port = int(CONFIG['banks'][f'{bank:03d}']['snmp_port'])
+                    obj_oid = (CONFIG['banks'][f'{bank:03d}']['ports'][f'{port:03d}'],)
 
                     match cmd:
                         case 'on':
                             self.add_power_change_to_queue(
-                                pysnmp.Integer(PowerbarValues.ON.value), obj_oid,
-                                bank, port
+                                agent_ip, agent_port,
+                                pysnmp.Integer(PowerbarValues.ON.value),
+                                obj_oid, bank, port
                             )
                         case 'of':
                             self.add_power_change_to_queue(
-                                pysnmp.Integer(PowerbarValues.OFF.value), obj_oid,
-                                bank, port
+                                agent_ip, agent_port,
+                                pysnmp.Integer(PowerbarValues.OFF.value),
+                                obj_oid, bank, port
                             )
                         case 'cy':
                             self.add_power_change_to_queue(
-                                pysnmp.Integer(PowerbarValues.CYCLE.value), obj_oid,
-                                bank, port
+                                agent_ip, agent_port,
+                                pysnmp.Integer(PowerbarValues.CYCLE.value),
+                                obj_oid, bank, port
                             )
 
                 # Errors will be raised when only a portion of the sequence has been

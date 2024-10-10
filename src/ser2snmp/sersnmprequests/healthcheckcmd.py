@@ -27,7 +27,7 @@ class HealthcheckCmd(BaseSnmpCmd):
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
-                 cmd_id: int, target_obj = None
+                 cmd_id: int, target_obj = None, bank_num: int = None
                  ) -> None:
         """
                 Initialization of attributes
@@ -55,6 +55,8 @@ class HealthcheckCmd(BaseSnmpCmd):
                          timeout, max_attempts, retry_delay,
                          None, target_obj,
                          cmd_id)
+    
+        self.bank_num = bank_num
 
     async def invoke_cmd(self) -> tuple[ErrorIndication,
                                         str,
@@ -76,6 +78,7 @@ class HealthcheckCmd(BaseSnmpCmd):
                                                      representing MIBs
         """
         # Creates required objects and sends GET command
+
         results = await pysnmp.getCmd(
             pysnmp.SnmpEngine(),
             pysnmp.UsmUserData(
@@ -104,7 +107,8 @@ class HealthcheckCmd(BaseSnmpCmd):
         Args:
             cmd_id (int): ID of the current command
         """
-        logger.info('Command #%d: PDU health check passed', self.cmd_id)
+        logger.info('Command #%d: PDU health check passed for bank %s', 
+                    self.cmd_id, self.bank_num)
 
     def handler_cmd_error(self, err_indicator, err_status, err_index,
                           var_binds):
@@ -116,9 +120,10 @@ class HealthcheckCmd(BaseSnmpCmd):
 
         """
         logger.error(
-            ('Command #%d: Error when performing health check.'
+            ('Command #%d: Error when performing health check for bank %s.'
                 'Engine status: %s. PDU status: %s. MIB status: %s'),
-                self.cmd_id, err_indicator, err_status, var_binds
+                self.cmd_id, self.bank_num,
+                err_indicator, err_status, var_binds
         )
 
     def handler_timeout_error(self):
@@ -129,7 +134,8 @@ class HealthcheckCmd(BaseSnmpCmd):
             cmd_id (int): ID of the current command
 
         """
-        logger.error('Command #%d: Timed-out on health check', self.cmd_id)
+        logger.error('Command #%d: Timed-out on health check for bank %s', 
+                     self.cmd_id, self.bank_num)
 
     def handler_max_attempts_error(self):
         """
