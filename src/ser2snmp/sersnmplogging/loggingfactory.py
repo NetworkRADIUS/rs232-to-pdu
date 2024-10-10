@@ -4,13 +4,38 @@ Entry point for rs-232 to SNMP converter script
 Author: Patrick Guo
 Date: 2024-08-13
 """
-import json
 import logging
 import logging.handlers
 import logging.config
 from typing import Callable
-import pathlib
 
+default_setup = {
+    "version": 1,
+    "formatters": {
+        "stdout": {
+            "format": "%(message)s"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "stdout",
+            "stream": "ext://sys.stdout"
+        },
+    },
+    "loggers": {
+        "": {
+            "level": "DEBUG",
+            "handlers": []
+        },
+        "nwkrad": {
+            "level": "DEBUG",
+            "handlers": ["stdout"]
+        }
+    },
+    "disable_existing_loggers": False
+}
 
 def setup_logging() -> None:
     """
@@ -24,12 +49,9 @@ def setup_logging() -> None:
     Returns:
         None
     """
-    config_file = pathlib.Path("sersnmplogging", "config.json")
-    with open(config_file, "r", encoding='utf-8') as config_read:
-        config = json.load(config_read)
 
-    # Loads config using json (dictionary) object
-    logging.config.dictConfig(config)
+    # Loads config using (dictionary object
+    logging.config.dictConfig(default_setup)
 
 def create_logger(
     name: str,

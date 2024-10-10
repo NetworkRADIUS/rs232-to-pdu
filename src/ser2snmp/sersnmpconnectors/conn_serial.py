@@ -5,7 +5,7 @@ Author: Patrick Guo
 Date: 2024-08-23
 """
 import serial
-import sersnmplogging.loggingfactory as nrlogfac
+import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
 from serial.serialutil import SerialException
 import time
 import os

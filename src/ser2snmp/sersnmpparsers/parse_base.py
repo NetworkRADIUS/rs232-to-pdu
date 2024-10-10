@@ -5,7 +5,7 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 from typing import Callable
-import sersnmplogging.loggingfactory as nrlogfac
+import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
 
 
 # Set up logger for this module

@@ -5,3 +5,14 @@ config.ini
 venv/
 .vscode/
 *.log
+tests/test_config.ini
+.idea/.gitignore
+.idea/modules.xml
+.idea/RpiLights.iml
+.idea/vcs.xml
+.idea/inspectionProfiles/profiles_settings.xml
+src/ser2snmp.egg-info/dependency_links.txt
+src/ser2snmp.egg-info/PKG-INFO
+src/ser2snmp.egg-info/requires.txt
+src/ser2snmp.egg-info/SOURCES.txt
+src/ser2snmp.egg-info/top_level.txt

@@ -4,7 +4,6 @@ Entry point for rs-232 to SNMP converter script
 Author: Patrick Guo
 Date: 2024-08-13
 """
-
 import asyncio
 import configparser
 import enum
@@ -13,23 +12,22 @@ import time
 import systemd_watchdog as sysdwd
 
 import pysnmp.hlapi.asyncio as pysnmp
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from typing import Callable
 
-import sersnmplogging.loggingfactory as nrlogfac
-from sersnmpconnectors.conn_serial import SerialConnection
-from sersnmpparsers.parse_base import ParseError
-from sersnmpparsers.parse_kvmseq import ParserKvmSequence
-from sersnmprequests.basesnmpcmd import AgentLocator, SnmpUser
-from sersnmprequests.healthcheckcmd import HealthcheckCmd
-from sersnmprequests.powerchangecmd import PowerChangeCmd
-from sersnmprequests.snmpcmdrunner import SnmpCmdRunner
-from sersnmpscheduler.sersnmpscheduler import ListenerScheduler
+import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
+from ser2snmp.sersnmpconnectors.conn_serial import SerialConnection
+from ser2snmp.sersnmpparsers.parse_base import ParseError
+from ser2snmp.sersnmpparsers.parse_kvmseq import ParserKvmSequence
+from ser2snmp.sersnmprequests.basesnmpcmd import AgentLocator, SnmpUser
+from ser2snmp.sersnmprequests.healthcheckcmd import HealthcheckCmd
+from ser2snmp.sersnmprequests.powerchangecmd import PowerChangeCmd
+from ser2snmp.sersnmprequests.snmpcmdrunner import SnmpCmdRunner
+from ser2snmp.sersnmpscheduler.sersnmpscheduler import ListenerScheduler
 
 # Read and setup configs
-CONFIG_FILE = pathlib.Path('config.ini')
+CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.ini')
 CONFIG = configparser.ConfigParser()
 CONFIG.read(CONFIG_FILE)
 
@@ -67,11 +65,6 @@ class SerialListener:
         self.scheduler = ListenerScheduler(self.event_loop)
         self.file_watchdog = None
 
-        self.sysdwd = sysdwd.watchdog()
-
-        # if not self.sysdwd.is_enabled:
-        #     raise OSError('Systemd watchdog not enabled')
-
         # Create serial connection
         self.serial_conn = SerialConnection()
 
@@ -96,6 +89,7 @@ class SerialListener:
 
         self.cmd_counter = 0
 
+        self.sysdwd = sysdwd.watchdog()
 
     def make_connection(self):
         """
@@ -261,13 +255,10 @@ class SerialListener:
         Returns:
             None
         """
-        # Read and appends all waiting bytes to read buffer
         self.read_buffer += self.serial_conn.read_all_waiting_bytes()
 
-        # variable for holding the start position of the current seq
         curr_seq_start_pos = 0
 
-        # Iterate through entire read buffer
         for cursor_pos, buffer_char in enumerate(self.read_buffer):
 
             # If the \r char is encountered, attempt to parse sequence
@@ -287,10 +278,8 @@ class SerialListener:
                     logger.info('Setting Bank %s Port %s to %s',
                                 bank, port, cmd.upper())
 
-                    # Retrieve OID from config
                     obj_oid = (CONFIG[f'BANK{bank:03d}'][f'PORT{port:03d}'],)
 
-                    # Create SNMP command based on command from sequence
                     match cmd:
                         case 'on':
                             self.add_power_change_to_queue(

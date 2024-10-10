@@ -4,9 +4,8 @@ Documentation = README.md
 
 [Service]
 Type=simple
-ExecStart=.../src/main.py
 Restart=on-watchdog
-ExecStart = ../src/start.py
+ExecStart=/usr/local/ser2snmp/venv/bin/python -m ser2snmp
 
 [Install]
-Alias=sersnmp
+WantedBy=multi-user.target
