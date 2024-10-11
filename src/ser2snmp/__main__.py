@@ -71,13 +71,7 @@ class SerialListener:
         # Initialization of other variables to be used in class
         self.read_buffer = []
 
-        self.snmp_user = SnmpUser(
-            CONFIG['pdu_auth']['user'],
-            CONFIG['pdu_auth']['auth_passphrase'],
-            CONFIG['pdu_auth']['priv_passphrase'],
-            pysnmp.usmHMACSHAAuthProtocol if CONFIG['pdu_auth']['auth'] == 'SHA' else None,
-            pysnmp.usmAesCfb128Protocol if CONFIG['pdu_auth']['priv'] == 'AES' else None
-        )
+        self.snmp_user = None
 
         self.timeout = int(CONFIG['snmp_retry']['timeout'])
 
@@ -284,6 +278,14 @@ class SerialListener:
                     else:
                         cmd, bank, port = parsed_tokens
                         logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
+
+                        self.snmp_user = SnmpUser(
+                            CONFIG['banks'][f'{bank:03d}']['pdu_auth']['user'],
+                            CONFIG['banks'][f'{bank:03d}']['pdu_auth']['auth_passphrase'],
+                            CONFIG['banks'][f'{bank:03d}']['pdu_auth']['priv_passphrase'],
+                            pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{bank:03d}']['pdu_auth']['auth'] == 'SHA' else None,
+                            pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{bank:03d}']['pdu_auth']['priv'] == 'AES' else None
+                        )
 
                         agent_ip = CONFIG['banks'][f'{bank:03d}']['ip_address']
                         agent_port = int(CONFIG['banks'][f'{bank:03d}']['snmp_port'])
