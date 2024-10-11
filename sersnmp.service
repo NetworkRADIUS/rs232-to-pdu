@@ -1,5 +1,5 @@
 [Unit]
-Description = A tool to convert serial-232 buffers into SNMP commands and requests for Tripplite power cables
+Description = A tool to convert ser232 string commands to SNMP SET commands for Tripplite PDUs
 Documentation = https://github.com/NetworkRADIUS/rs232-to-tripplite-pdu/blob/main/README.md
 
 [Service]
