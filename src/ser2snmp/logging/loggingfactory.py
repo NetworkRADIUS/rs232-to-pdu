@@ -28,7 +28,7 @@ def setup_logging() -> None:
     Returns:
         None
     """
-    repr_formatter = ReprFormatter('%(message)s')
+    repr_formatter = ReprFormatter('%(asctime)s - %(name)s - %(levelname)s : At Line %(lineno)s of %(module)s :: %(message)s')
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setFormatter(repr_formatter)
