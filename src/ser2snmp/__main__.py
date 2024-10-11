@@ -280,34 +280,34 @@ class SerialListener:
                     # Upon encountering quit and empty sequence, do nothing
                     if parsed_tokens[0] in ['quit', '']:
                         logger.info('Quit or empty sequence detected')
-                        return
+                    
+                    else:
+                        cmd, bank, port = parsed_tokens
+                        logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
 
-                    cmd, bank, port = parsed_tokens
-                    logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
+                        agent_ip = CONFIG['banks'][f'{bank:03d}']['ip_address']
+                        agent_port = int(CONFIG['banks'][f'{bank:03d}']['snmp_port'])
+                        obj_oid = (CONFIG['banks'][f'{bank:03d}']['ports'][f'{port:03d}'],)
 
-                    agent_ip = CONFIG['banks'][f'{bank:03d}']['ip_address']
-                    agent_port = int(CONFIG['banks'][f'{bank:03d}']['snmp_port'])
-                    obj_oid = (CONFIG['banks'][f'{bank:03d}']['ports'][f'{port:03d}'],)
-
-                    match cmd:
-                        case 'on':
-                            self.add_power_change_to_queue(
-                                agent_ip, agent_port,
-                                pysnmp.Integer(PowerbarValues.ON.value),
-                                obj_oid, bank, port
-                            )
-                        case 'of':
-                            self.add_power_change_to_queue(
-                                agent_ip, agent_port,
-                                pysnmp.Integer(PowerbarValues.OFF.value),
-                                obj_oid, bank, port
-                            )
-                        case 'cy':
-                            self.add_power_change_to_queue(
-                                agent_ip, agent_port,
-                                pysnmp.Integer(PowerbarValues.CYCLE.value),
-                                obj_oid, bank, port
-                            )
+                        match cmd:
+                            case 'on':
+                                self.add_power_change_to_queue(
+                                    agent_ip, agent_port,
+                                    pysnmp.Integer(PowerbarValues.ON.value),
+                                    obj_oid, bank, port
+                                )
+                            case 'of':
+                                self.add_power_change_to_queue(
+                                    agent_ip, agent_port,
+                                    pysnmp.Integer(PowerbarValues.OFF.value),
+                                    obj_oid, bank, port
+                                )
+                            case 'cy':
+                                self.add_power_change_to_queue(
+                                    agent_ip, agent_port,
+                                    pysnmp.Integer(PowerbarValues.CYCLE.value),
+                                    obj_oid, bank, port
+                                )
 
                 # Errors will be raised when only a portion of the sequence has been
                 # received and attempted to be parsed
