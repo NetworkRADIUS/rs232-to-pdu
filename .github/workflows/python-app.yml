@@ -14,8 +14,10 @@ permissions:
 
 jobs:
   build:
-
+    timeout-minutes: 60
     runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
 
     steps:
     - uses: actions/checkout@v4
