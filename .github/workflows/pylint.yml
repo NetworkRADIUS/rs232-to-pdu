@@ -4,7 +4,10 @@ on: [push]
 
 jobs:
   build:
+    timeout-minutes: 60
     runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
