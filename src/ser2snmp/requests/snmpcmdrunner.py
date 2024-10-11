@@ -11,7 +11,7 @@ Date: 2024-08-26
 """
 import asyncio
 
-from ser2snmp.sersnmprequests.basesnmpcmd import BaseSnmpCmd
+from ser2snmp.requests.basesnmpcmd import BaseSnmpCmd
 
 
 class SnmpCmdRunner:

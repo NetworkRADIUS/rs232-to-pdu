@@ -5,7 +5,7 @@ Author: Patrick Guo
 Date: 2024-08-23
 """
 import serial
-import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
+import ser2snmp.logging.loggingfactory as nrlogfac
 from serial.serialutil import SerialException
 
 LOG_FILE = './serialconnections.log'

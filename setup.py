@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ser2snmp',
-    version='1.0.7',
+    version='1.0.10',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
 
@@ -35,6 +35,7 @@ setup(
         'tomlkit',
         'tzlocal',
         'urllib3',
-        'watchdog==5.0.0'
+        'watchdog==5.0.0',
+        'pyyaml'
     ]
 )

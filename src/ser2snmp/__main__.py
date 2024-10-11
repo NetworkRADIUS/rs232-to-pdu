@@ -16,15 +16,15 @@ from watchdog.events import FileSystemEventHandler
 from typing import Callable
 import yaml
 
-import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
-from ser2snmp.sersnmpconnectors.conn_serial import SerialConnection
-from ser2snmp.sersnmpparsers.parse_base import ParseError
-from ser2snmp.sersnmpparsers.parse_kvmseq import ParserKvmSequence
-from ser2snmp.sersnmprequests.basesnmpcmd import SnmpUser
-from ser2snmp.sersnmprequests.healthcheckcmd import HealthcheckCmd
-from ser2snmp.sersnmprequests.powerchangecmd import PowerChangeCmd
-from ser2snmp.sersnmprequests.snmpcmdrunner import SnmpCmdRunner
-from ser2snmp.sersnmpscheduler.sersnmpscheduler import ListenerScheduler
+import ser2snmp.logging.loggingfactory as nrlogfac
+from ser2snmp.connectors.conn_serial import SerialConnection
+from ser2snmp.parsers.parse_base import ParseError
+from ser2snmp.parsers.parse_kvmseq import ParserKvmSequence
+from ser2snmp.requests.basesnmpcmd import SnmpUser
+from ser2snmp.requests.healthcheckcmd import HealthcheckCmd
+from ser2snmp.requests.powerchangecmd import PowerChangeCmd
+from ser2snmp.requests.snmpcmdrunner import SnmpCmdRunner
+from ser2snmp.scheduler.sersnmpscheduler import ListenerScheduler
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')

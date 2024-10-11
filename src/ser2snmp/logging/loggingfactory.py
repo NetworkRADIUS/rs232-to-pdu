@@ -8,34 +8,13 @@ import logging
 import logging.handlers
 import logging.config
 from typing import Callable
+import sys
 
-default_setup = {
-    "version": 1,
-    "formatters": {
-        "stdout": {
-            "format": "%(message)s"
-        }
-    },
-    "handlers": {
-        "stdout": {
-            "class": "logging.StreamHandler",
-            "level": "INFO",
-            "formatter": "stdout",
-            "stream": "ext://sys.stdout"
-        },
-    },
-    "loggers": {
-        "": {
-            "level": "DEBUG",
-            "handlers": []
-        },
-        "nwkrad": {
-            "level": "DEBUG",
-            "handlers": ["stdout"]
-        }
-    },
-    "disable_existing_loggers": False
-}
+class ReprFormatter(logging.Formatter):
+    def format(self, record):
+        record.msg = repr(record.msg)
+        return super().format(record)
+
 
 def setup_logging() -> None:
     """
@@ -49,9 +28,18 @@ def setup_logging() -> None:
     Returns:
         None
     """
+    repr_formatter = ReprFormatter('%(message)s')
 
-    # Loads config using (dictionary object
-    logging.config.dictConfig(default_setup)
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(repr_formatter)
+    stdout_handler.setLevel(logging.INFO)
+
+    root_logger = logging.getLogger('')
+    root_logger.setLevel(logging.INFO)
+
+    ser2snmp_logger = logging.getLogger('ser2snmp')
+    ser2snmp_logger.setLevel(logging.INFO)
+    ser2snmp_logger.addHandler(stdout_handler)
 
 def create_logger(
     name: str,
@@ -72,7 +60,7 @@ def create_logger(
     Returns:
         the newly create logger object
     """
-    logger = logging.getLogger(f'nwkrad.{name}')
+    logger = logging.getLogger(f'ser2snmp.{name}')
     logger.setLevel(level)
     logger.propagate = propagation
     if log_filter:

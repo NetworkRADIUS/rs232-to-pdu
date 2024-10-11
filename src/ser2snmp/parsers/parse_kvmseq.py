@@ -7,8 +7,8 @@ Date: 2024-08-13
 """
 from enum import Enum
 
-import ser2snmp.sersnmplogging.loggingfactory as nrlogfac
-from ser2snmp.sersnmpparsers.parse_base import BaseParser
+import ser2snmp.logging.loggingfactory as nrlogfac
+from ser2snmp.parsers.parse_base import BaseParser
 
 # Set up logger for this module
 logger = nrlogfac.create_logger(__name__)
