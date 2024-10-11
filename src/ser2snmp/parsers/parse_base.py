@@ -87,8 +87,9 @@ class BaseParser:
             self.remove_leading_whitespace()
 
         for keyword in keywords:
-            logger.debug('Attempting to find keyword %s for "%s" at position %s',
-                         keyword, self.buffer, self.cursor_pos)
+            logger.debug((f'Attempting to find keyword {keyword} for '
+                          f'"{self.buffer}" at position {self.cursor_pos}')
+                         )
             # Calculate starting and ending position of keyword if present at
             # current location
             start_pos = self.cursor_pos
@@ -102,8 +103,9 @@ class BaseParser:
                 # returns the keyword that matched
                 return keyword
 
-        logger.error('Failed to find keywords: %s, for "%s" at position %s',
-                     ', '.join(keywords), self.buffer, self.cursor_pos)
+        logger.error((f'Failed to find keywords: {", ".join(keywords)}, for '
+                      f'"{self.buffer}" at position {self.cursor_pos}')
+                     )
         # if none of the keywords were found, raise error
         raise ParseError(self.buffer, self.cursor_pos,
                          f"No keywords: [{','.join(keywords)}] found")
@@ -123,8 +125,9 @@ class BaseParser:
         Raises:
             ParseError if no number was detected
         """
-        logger.debug('Looking for positive number for "%s" at position %s',
-                     self.buffer, self.cursor_pos)
+        logger.debug((f'Looking for positive number for "{self.buffer}" at '
+                      f'position {self.cursor_pos}')
+                     )
         self.remove_leading_whitespace()
 
         init_pos = self.cursor_pos
@@ -139,8 +142,9 @@ class BaseParser:
         # if no numbers were found (i.e., first char was non-numerical), we
         # raise error as this should be unexpected
         if init_pos == self.cursor_pos:
-            logger.error('No positive number found for "%s"at position %s',
-                         self.buffer, self.cursor_pos)
+            logger.error((f'No positive number found for "{self.buffer}"at '
+                          f'position {self.cursor_pos}')
+                         )
             raise ParseError(self.buffer, self.cursor_pos, 'No number found')
 
         # Update cursor position and return the integer as an int (rather than
@@ -161,8 +165,9 @@ class BaseParser:
         Raises:
             ParseError if the integer parsed is larger than 256 (uint8)
         """
-        logger.debug('Looking for uint8 number for "%s" at position %s',
-                     self.buffer, self.cursor_pos)
+        logger.debug((f'Looking for uint8 number for "{self.buffer}" at '
+                      f'position {self.cursor_pos}')
+                     )
         start_pos = self.cursor_pos
 
         parsed_number = self.search_positive_number()
@@ -170,8 +175,9 @@ class BaseParser:
             # reset staring pos and raise error if integer parsed is larger
             # than 256
             self.cursor_pos = start_pos
-            logger.error('No uint8 number found for "%s" at position %s',
-                         self.buffer, self.cursor_pos)
+            logger.error((f'No uint8 number found for "{self.buffer}" at '
+                          f'position {self.cursor_pos}')
+                         )
             raise ParseError(self.buffer, start_pos,
                              'Parsed integer larger than a uint8')
 

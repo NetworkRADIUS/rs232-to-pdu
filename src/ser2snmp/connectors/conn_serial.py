@@ -43,15 +43,16 @@ class SerialConnection:
         """
         try:
             self.ser = serial.Serial(port=port, timeout=timeout, xonxoff=xonxoff)
-            logger.info(('Serial port opened, device %s, baud %s, timeout %s, '
-                         'Software Flow Control %s'),
-                         port, baud, timeout, xonxoff)
+            logger.info((f'Serial port opened, device {port}, baud {baud}, '
+                         f'timeout {timeout}, Software Flow Control {xonxoff}')
+                        )
             # Checks if connection was actually opened
             return not self.ser is None
         except SerialException as e:
-            logger.info(('Serial port failed to open: device %s, baud%s, '
-                          'timeout %s, Software Flow Control %s, Error: %s'),
-                          port, baud, timeout, xonxoff, e)
+            logger.info((f'Serial port failed to open: device {port}, '
+                         f'baud {baud}, timeout {timeout}, Software Flow '
+                         f'Control {xonxoff}, Error: {e}')
+                        )
             return False
 
     def read_all_waiting_bytes(self) -> str:

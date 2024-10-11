@@ -114,11 +114,10 @@ class PowerChangeCmd(BaseSnmpCmd):
             None
         """
 
-        logger.info(
-            'Command #%d: Successfully set bank %s port %s to %s',
-            self.cmd_id, self.outlet_bank, self.outlet_port,
-            self.pdu_object.object_value
-        )
+        logger.info((f'Command #{self.cmd_id}: Successfully set bank '
+                     f'{self.outlet_bank} port {self.outlet_port} to '
+                     f'{self.pdu_object.object_value}')
+                    )
 
     def handler_cmd_error(self, err_indicator, err_status, err_index, var_binds):
         """
@@ -128,12 +127,11 @@ class PowerChangeCmd(BaseSnmpCmd):
             None
 
         """
-        logger.error(
-            ('Command #%d Error when setting bank %s port %s to %s.'
-             'Engine status: %s. PDU status: %s. MIB status: %s'),
-            self.cmd_id, self.outlet_bank, self.outlet_port,
-            self.pdu_object.object_value,
-            err_indicator, err_status, var_binds[err_index] if var_binds else None
+        logger.error((f'Command #{self.cmd_id} Error when setting bank '
+                      f'{self.outlet_bank} port {self.outlet_port} to '
+                      f'{self.pdu_object.object_value}. Engine status: '
+                      f'{err_indicator}. PDU status: {err_status}. MIB status: '
+                      f'{var_binds[err_index] if var_binds else None}')
         )
 
     def handler_timeout_error(self):
@@ -144,11 +142,10 @@ class PowerChangeCmd(BaseSnmpCmd):
             None
 
         """
-        logger.error(
-            'Command #%d: Timed-out setting bank %s port %s to %s',
-            self.cmd_id, self.outlet_bank, self.outlet_port,
-            self.pdu_object.object_value
-        )
+        logger.error((f'Command #{self.cmd_id}: Timed-out setting bank '
+                      f'{self.outlet_bank} port {self.outlet_port} to '
+                      f'{self.pdu_object.object_value}')
+                     )
 
     def handler_max_attempts_error(self):
         """
@@ -158,8 +155,7 @@ class PowerChangeCmd(BaseSnmpCmd):
             None
 
         """
-        logger.error(
-            'Command #%d: Max retry attempts setting bank %s port %s to %s',
-            self.cmd_id, self.outlet_bank, self.outlet_port,
-            self.pdu_object.object_value
-        )
+        logger.error((f'Command #{self.cmd_id}: Max retry attempts setting '
+                      f'bank {self.outlet_bank} port {self.outlet_port} to '
+                      f'{self.pdu_object.object_value}')
+                     )

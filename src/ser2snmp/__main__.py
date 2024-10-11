@@ -267,8 +267,9 @@ class SerialListener:
             # If the \r char is encountered, attempt to parse sequence
             if buffer_char == '\r':
                 try:
-                    logger.debug('Received command sequence: "%s"',
-                                ''.join(self.read_buffer))
+                    logger.debug((f'Received command sequence: "'
+                                  f'{"".join(self.read_buffer)}"')
+                                 )
                     # Attempt to parse part of read buffer containing sequence
                     parsed_tokens = self.kvm_parser.parse(
                         ''.join(
@@ -282,8 +283,7 @@ class SerialListener:
                         return
 
                     cmd, bank, port = parsed_tokens
-                    logger.info('Setting Bank %s Port %s to %s',
-                                bank, port, cmd.upper())
+                    logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
 
                     agent_ip = CONFIG['banks'][f'{bank:03d}']['ip_address']
                     agent_port = int(CONFIG['banks'][f'{bank:03d}']['snmp_port'])
@@ -312,8 +312,9 @@ class SerialListener:
                 # Errors will be raised when only a portion of the sequence has been
                 # received and attempted to be parsed
                 except ParseError:
-                    logger.warning('Parser failed to parse: "%s"',
-                                ''.join(self.read_buffer))
+                    logger.warning((f'Parser failed to parse: "'
+                                    f'{"".join(self.read_buffer)}"')
+                                   )
                 curr_seq_start_pos = cursor_pos + 1
 
         # Delete parsed portion of buffer

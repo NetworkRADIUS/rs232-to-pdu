@@ -59,7 +59,7 @@ class ParserKvmSequence(BaseParser):
                 bank: <str>
                 port: <str>
         """
-        logger.debug('Attempting to parse "%s"', buffer)
+        logger.debug(f'Attempting to parse "{buffer}"')
 
         self.buffer = buffer
         self.cursor_pos = 0

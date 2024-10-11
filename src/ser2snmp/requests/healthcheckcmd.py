@@ -107,8 +107,9 @@ class HealthcheckCmd(BaseSnmpCmd):
         Args:
             cmd_id (int): ID of the current command
         """
-        logger.info('Command #%d: PDU health check passed for bank %s', 
-                    self.cmd_id, self.bank_num)
+        logger.info((f'Command #{self.cmd_id}: PDU health check passed for '
+                     f'bank {self.bank_num}')
+                    )
 
     def handler_cmd_error(self, err_indicator, err_status, err_index,
                           var_binds):
@@ -119,12 +120,11 @@ class HealthcheckCmd(BaseSnmpCmd):
             cmd_id (int): ID of the current command
 
         """
-        logger.error(
-            ('Command #%d: Error when performing health check for bank %s.'
-                'Engine status: %s. PDU status: %s. MIB status: %s'),
-                self.cmd_id, self.bank_num,
-                err_indicator, err_status, var_binds
-        )
+        logger.error((f'Command #{self.cmd_id}: Error when performing health '
+                      f'check for bank {self.bank_num}. Engine status: '
+                      f'{err_indicator}. PDU status: {err_status}. MIB '
+                      f'status: {var_binds[err_index] if var_binds else None}')
+                     )
 
     def handler_timeout_error(self):
         """
@@ -134,8 +134,9 @@ class HealthcheckCmd(BaseSnmpCmd):
             cmd_id (int): ID of the current command
 
         """
-        logger.error('Command #%d: Timed-out on health check for bank %s', 
-                     self.cmd_id, self.bank_num)
+        logger.error((f'Command #{self.cmd_id}: Timed-out on health check for '
+                      f'bank {self.bank_num}')
+                     )
 
     def handler_max_attempts_error(self):
         """
