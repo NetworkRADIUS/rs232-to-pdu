@@ -15,41 +15,33 @@ Cycle (restart) outlet: ```cy <bank> <port>```
 In all cases, ```<bank>``` and ```<port>``` are expected to be ```uint8``` values.\
 In all cases, this tool will send a ```SET``` command to the SNMP agent.
 
-Note that the SNMP agent may "flatten" multiple banks into seemingly a single bank, with the ports being serialized.
-
 ---
 
 ## Config Format
 
-This tool expects a configuration file called ```config.ini```, placed under ```src/```. This file must conform the INI format and have the following sections.
+This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must conform the yaml format and have the following sections.
 
-#### ```SERIAL_CONFIGS```
-```SERIAL_PORT```: string value of file location of serial port\
-```TIMEOUT```: time in seconds before timing out serial connection
+```serial_configs```:\
+\- ```serial_port```: string value of serial port tty file\
+\- ```timeout```: time in seconds before timing out serial connection
 
-####  ```PDU_AUTH```
-```USER```: string value of SNMP user name\
-```AUTH```: string value of authentication protocol\
-```AUTH_PASSPHRASE```: string value of authentication passphrase\
-```PRIV```: string value of privacy protocol\
-```PRIV_PASSPHRASE```: string value of privacy passphrase
+```snmp_retry```:
+\- ```max_attempts```: integer value of maximum attempts allowed for an SNMP command\
+\- ```retry_delay```: time in seconds to wait between SNMP command retries\
+\- ```timeout```: time in seconds before timing out SNMP commands
 
-#### ```PDU_LOCATION```
-```IP_ADDRESS```: string value of IP address of SNMP agent\
-```PORT```: integer value of network port of SNMP agent
-
-#### ```SNMP_RETRY```
-```MAX_ATTEMPTS```: integer value of number of maximum attempts for an SNMP command\
-```RETRY_DELAY```: time in seconds to wait before attempting a retry after a SNMP command failure
-```TIMEOUT```: time in seconds before timing out SNMP command
-
-In addition to the above sections, each power bank must have its own section, titled as ```BANK<# padded to 3 digits>```. Within each of these sections, each port must have its own attribute, titled as ```PORT<# padded to 3 digits>```. The value of each of these attributes must be the matching ```OID``` for the port. A sample section is provided below.
-
-#### ```[BANK001]```
-```PORT001 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.1```\
-```PORT002 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.2```\
-```PORT003 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.3```\
-```PORT004 = 1.3.6.1.4.1.850.1.1.3.2.3.3.1.1.6.1.4```
+```banks```:
+\- ```<bank number>*```
+&emsp;\- ```pdu_auth```:
+&emsp;&emsp; \- ```user```: string value of SNMP username\
+&emsp;&emsp; \- ```auth```: string value of authentication protocol\
+&emsp;&emsp; \- ```auth_passphrase```: string value of authentication passphrase\
+&emsp;&emsp; \- ```priv```: string value of privacy protocol\
+&emsp;&emsp; \- ```priv_passphrase```: string value of privacy passphrase\
+&emsp; \- ```ip_address```: string value of IP address of SNMP agent\
+&emsp; \- ```snmp_port```: integer value of network port of SNMP agent\
+&emsp; \- ```ports```:\
+&emsp;&emsp; \- ```<port number>*```: string value of OID for this port
 
 ---
 
