@@ -148,17 +148,16 @@ class SerialListener:
             None
         """
         for bank_num in CONFIG['banks'].keys():
-            bank_num = int(bank_num)
             self.snmp_user = SnmpUser(
-                CONFIG['banks'][f'{bank_num:03d}']['pdu_auth']['user'],
-                CONFIG['banks'][f'{bank_num:03d}']['pdu_auth']['auth_passphrase'],
-                CONFIG['banks'][f'{bank_num:03d}']['pdu_auth']['priv_passphrase'],
-                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{bank_num:03d}']['pdu_auth']['auth'] == 'SHA' else None,
-                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{bank_num:03d}']['pdu_auth']['priv'] == 'AES' else None
+                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['user'],
+                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['auth_passphrase'],
+                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['priv_passphrase'],
+                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['auth'] == 'SHA' else None,
+                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['priv'] == 'AES' else None
             )
 
-            agent_ip = CONFIG['banks'][bank_num]['ip_address']
-            agent_port = int(CONFIG['banks'][bank_num]['snmp_port'])
+            agent_ip = CONFIG['banks'][f'{int(bank_num):03d}']['ip_address']
+            agent_port = int(CONFIG['banks'][f'{int(bank_num):03d}']['snmp_port'])
 
             # create new command object
             new_cmd = HealthcheckCmd(
@@ -298,7 +297,7 @@ class SerialListener:
 
                         agent_ip = CONFIG['banks'][f'{int(bank):03d}']['ip_address']
                         agent_port = int(CONFIG['banks'][f'{int(bank):03d}']['snmp_port'])
-                        obj_oid = (CONFIG['banks'][f'{int(bank):03d}']['ports'][f'{port:03d}'],)
+                        obj_oid = (CONFIG['banks'][f'{int(bank):03d}']['ports'][f'{int(port):03d}'],)
 
                         match cmd:
                             case 'on':
