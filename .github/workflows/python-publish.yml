@@ -24,6 +24,10 @@ jobs:
     steps:
       - name: Mark the complete Git directory hierarchy as safe
         run: git config --global --add safe.directory '*'
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3:11"
         
       - uses: actions/checkout@v4
         with:
