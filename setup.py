@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='rs232-to-tripplite-pdu',
-    version='1.0.2',
+    version='1.0.4',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
 
