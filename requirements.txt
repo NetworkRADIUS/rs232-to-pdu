@@ -1,6 +1,7 @@
 APScheduler==3.10.4
 astroid==3.2.4
 backports.tarfile==1.2.0
+build==1.2.2.post1
 certifi==2024.7.4
 cffi==1.17.0
 charset-normalizer==3.3.2
@@ -23,6 +24,7 @@ mccabe==0.7.0
 mdurl==0.1.2
 more-itertools==10.5.0
 nh3==0.2.18
+packaging==24.1
 pkginfo==1.10.0
 platformdirs==4.2.2
 ply==3.11
@@ -30,6 +32,7 @@ pyasn1==0.6.0
 pycparser==2.22
 Pygments==2.18.0
 pylint==3.2.6
+pyproject_hooks==1.2.0
 pyserial==3.5
 pysmi==1.4.4
 pysnmp==6.2.5
