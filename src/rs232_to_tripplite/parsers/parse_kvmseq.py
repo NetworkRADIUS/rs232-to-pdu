@@ -7,8 +7,8 @@ Date: 2024-08-13
 """
 from enum import Enum
 
-import ser2snmp.logging.loggingfactory as nrlogfac
-from ser2snmp.parsers.parse_base import BaseParser
+import rs232_to_tripplite.logging.loggingfactory as nrlogfac
+from rs232_to_tripplite.parsers.parse_base import BaseParser
 
 # Set up logger for this module
 logger = nrlogfac.create_logger(__name__)

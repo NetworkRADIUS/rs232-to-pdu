@@ -16,15 +16,15 @@ from watchdog.events import FileSystemEventHandler
 from typing import Callable
 import yaml
 
-import ser2snmp.logging.loggingfactory as nrlogfac
-from ser2snmp.connectors.conn_serial import SerialConnection
-from ser2snmp.parsers.parse_base import ParseError
-from ser2snmp.parsers.parse_kvmseq import ParserKvmSequence
-from ser2snmp.requests.basesnmpcmd import SnmpUser
-from ser2snmp.requests.healthcheckcmd import HealthcheckCmd
-from ser2snmp.requests.powerchangecmd import PowerChangeCmd
-from ser2snmp.requests.snmpcmdrunner import SnmpCmdRunner
-from ser2snmp.scheduler.sersnmpscheduler import ListenerScheduler
+import rs232_to_tripplite.logging.loggingfactory as nrlogfac
+from rs232_to_tripplite.connectors.conn_serial import SerialConnection
+from rs232_to_tripplite.parsers.parse_base import ParseError
+from rs232_to_tripplite.parsers.parse_kvmseq import ParserKvmSequence
+from rs232_to_tripplite.requests.basesnmpcmd import SnmpUser
+from rs232_to_tripplite.requests.healthcheckcmd import HealthcheckCmd
+from rs232_to_tripplite.requests.powerchangecmd import PowerChangeCmd
+from rs232_to_tripplite.requests.snmpcmdrunner import SnmpCmdRunner
+from rs232_to_tripplite.scheduler.sersnmpscheduler import ListenerScheduler
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')

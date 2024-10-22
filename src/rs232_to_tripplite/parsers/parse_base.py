@@ -5,7 +5,7 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 from typing import Callable
-import ser2snmp.logging.loggingfactory as nrlogfac
+import rs232_to_tripplite.logging.loggingfactory as nrlogfac
 
 
 # Set up logger for this module
