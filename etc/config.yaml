@@ -1,0 +1,46 @@
+serial:
+  device: {{ device }}
+  timeout: 0
+
+snmp:
+  retry:
+    max_attempts: 3
+    delay: 5
+    timeout: 5
+
+banks:
+  '001':
+    snmp:
+      v3:
+        user: {{ snmp_user }}
+        auth_protocol: {{ snmp_auth }}
+        auth_passphrase: '{{ snmp_auth_passphrase }}'
+        priv_protocol: {{ snmp_priv }}
+        priv_passphrase: '{{ snmp_priv_passphrase }}'
+      ip_address: {{ ip_address }}
+      port: {{ port }}
+      outlets:
+        '001': {{ oid }}
+        '002': {{ oid }}
+        '003': {{ oid }}
+        '004': {{ oid }}
+        '005': {{ oid }}
+        '006': {{ oid }}
+        '007': {{ oid }}
+        '008': {{ oid }}
+        '009': {{ oid }}
+        '010': {{ oid }}
+        '011': {{ oid }}
+        '012': {{ oid }}
+        '013': {{ oid }}
+        '014': {{ oid }}
+        '015': {{ oid }}
+        '016': {{ oid }}
+        '017': {{ oid }}
+        '018': {{ oid }}
+        '019': {{ oid }}
+        '020': {{ oid }}
+        '021': {{ oid }}
+        '022': {{ oid }}
+        '023': {{ oid }}
+        '024': {{ oid }}

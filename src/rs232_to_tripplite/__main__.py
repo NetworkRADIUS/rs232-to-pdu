@@ -75,8 +75,8 @@ class SerialListener:
 
         self.timeout = int(CONFIG['snmp_retry']['timeout'])
 
-        self.max_attempts = int(CONFIG['snmp_retry']['max_attempts'])
-        self.retry_delay = int(CONFIG['snmp_retry']['retry_delay'])
+        self.max_attempts = int(CONFIG['snmp']['retry']['max_attempts'])
+        self.retry_delay = int(CONFIG['snmp']['retry']['delay'])
 
         self.cmd_counter = 0
 
@@ -95,8 +95,8 @@ class SerialListener:
         self.sysdwd.status('Openning serial port')
 
         # Makes the connection
-        serial_port    = CONFIG['serial_configs']['serial_port']
-        serial_timeout = int(CONFIG['serial_configs']['timeout'])
+        serial_port    = CONFIG['serial']['device']
+        serial_timeout = int(CONFIG['serial']['timeout'])
         if self.serial_conn.make_connection(serial_port,
                                             timeout=serial_timeout):
             self.sysdwd.status('Serial port successfully opened')
@@ -125,11 +125,11 @@ class SerialListener:
                 self.scheduler.start_reconnect_job(self.attempt_reconnect)
 
                 watch_path = '/'.join(
-                    CONFIG['serial_configs']['serial_port'].split('/')[:-1]
+                    CONFIG['serial']['device'].split('/')[:-1]
                 )
                 self.file_watchdog = Observer()
                 self.file_watchdog.schedule(
-                    LookForFileEH(CONFIG['serial_configs']['serial_port'],
+                    LookForFileEH(CONFIG['serial']['device'],
                                 self.attempt_reconnect
                     ),
                     watch_path
@@ -149,15 +149,15 @@ class SerialListener:
         """
         for bank_num in CONFIG['banks'].keys():
             self.snmp_user = SnmpUser(
-                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['user'],
-                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['auth_passphrase'],
-                CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['priv_passphrase'],
-                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['auth'] == 'SHA' else None,
-                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank_num):03d}']['pdu_auth']['priv'] == 'AES' else None
+                CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['v3']['user'],
+                CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['v3']['auth_passphrase'],
+                CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['v3']['priv_passphrase'],
+                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
+                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
             )
 
-            agent_ip = CONFIG['banks'][f'{int(bank_num):03d}']['ip_address']
-            agent_port = int(CONFIG['banks'][f'{int(bank_num):03d}']['snmp_port'])
+            agent_ip = CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['ip_address']
+            agent_port = int(CONFIG['banks'][f'{int(bank_num):03d}']['snmp']['port'])
 
             # create new command object
             new_cmd = HealthcheckCmd(
@@ -288,16 +288,16 @@ class SerialListener:
                         logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
 
                         self.snmp_user = SnmpUser(
-                            CONFIG['banks'][f'{int(bank):03d}']['pdu_auth']['user'],
-                            CONFIG['banks'][f'{int(bank):03d}']['pdu_auth']['auth_passphrase'],
-                            CONFIG['banks'][f'{int(bank):03d}']['pdu_auth']['priv_passphrase'],
-                            pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['pdu_auth']['auth'] == 'SHA' else None,
-                            pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['pdu_auth']['priv'] == 'AES' else None
+                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
+                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
+                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
+                            pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
+                            pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
                         )
 
-                        agent_ip = CONFIG['banks'][f'{int(bank):03d}']['ip_address']
-                        agent_port = int(CONFIG['banks'][f'{int(bank):03d}']['snmp_port'])
-                        obj_oid = (CONFIG['banks'][f'{int(bank):03d}']['ports'][f'{int(port):03d}'],)
+                        agent_ip = CONFIG['banks'][f'{int(bank):03d}']['snmp']['ip_address']
+                        agent_port = int(CONFIG['banks'][f'{int(bank):03d}']['snmp']['port'])
+                        obj_oid = (CONFIG['banks'][f'{int(bank):03d}']['snmp']['outlets'][f'{int(port):03d}'],)
 
                         match cmd:
                             case 'on':
