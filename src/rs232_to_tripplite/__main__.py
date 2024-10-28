@@ -236,7 +236,9 @@ class SerialListener:
         )
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
-        self.scheduler.start_healthcheck_job(self.add_healthcheck_to_queue)
+        self.scheduler.start_healthcheck_job(
+            self.add_healthcheck_to_queue, CONFIG['healthcheck']['frequency']
+        )
         self.scheduler.start_systemd_notify(
             self.sysdwd.notify, self.sysdwd.timeout / 2e6
         )

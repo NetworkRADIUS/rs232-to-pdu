@@ -2,6 +2,9 @@ serial:
   device: {{ device }}
   timeout: 0
 
+healthcheck:
+  frequency: 5
+
 snmp:
   retry:
     max_attempts: 3
