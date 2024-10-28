@@ -73,7 +73,8 @@ class BaseSnmpCmd:
     
     """
     def __init__(self,
-                 agent_ip: str, agent_port: int,
+                 agent_ip: str, agent_port: int, version: int,
+                 community_name: str,
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
@@ -101,6 +102,8 @@ class BaseSnmpCmd:
 
         # Initiate our entity objects
         self.agent_loc = AgentLocator(agent_ip, agent_port)
+        self.version = version
+        self.community_name = community_name
         self.user = SnmpUser(user, auth, priv, auth_protocol, priv_protocol)
         self.pdu_object = PduObject(object_value, object_identities)
 

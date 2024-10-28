@@ -43,6 +43,17 @@ enable instantaneous healthchecks.
 
 ---
 
+## SNMP Authentication
+
+This tool supports v1, v2, and v3 SNMP authentication.
+
+The authentication version for each bank should be listed in the `config.yaml` file. However, it is important to note 
+that only a single version is allowed for each bank. That is, a bank cannot use more than one authentication scheme.
+
+On config load, a check is performed to ensured that each bank uses exactly one authentication scheme.
+
+---
+
 ## Config Format
 
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
@@ -64,6 +75,9 @@ conform the yaml format and have the following sections.
 ```banks```:\
 \- ```<bank number>*```\
 &emsp; \- ```snmp```:\
+&emsp;&emsp; \- ```v1``` | ```v2```:\
+&emsp;&emsp;&emsp; \- ```public_community```: string value of public community name\
+&emsp;&emsp;&emsp; \- ```private_community```: string value of private community name\
 &emsp;&emsp; \- ```v3```:\
 &emsp;&emsp;&emsp; \- ```user```: string value of SNMP username\
 &emsp;&emsp;&emsp; \- ```auth_protocol```: string value of authentication protocol\
@@ -94,6 +108,26 @@ snmp:
 banks:
   '001':
     snmp:
+      v1:
+        public_community: {{ community_name }}
+        private_community: {{ community_name }}
+      ip_address: {{ ip_address }}
+      port: {{ port }}
+      outlets:
+        '001': {{ oid }}
+        '002': {{ oid }}
+  '002':
+    snmp:
+      v2:
+        public_community: {{ community_name }}
+        private_community: {{ community_name }}
+      ip_address: {{ ip_address }}
+      port: {{ port }}
+      outlets:
+        '001': {{ oid }}
+        '002': {{ oid }}
+  '003':
+    snmp:
       v3:
         user: {{ snmp_user }}
         auth_protocol: {{ snmp_auth }}
@@ -105,10 +139,4 @@ banks:
       outlets:
         '001': {{ oid }}
         '002': {{ oid }}
-        '003': {{ oid }}
-        '004': {{ oid }}
-        '005': {{ oid }}
-        '006': {{ oid }}
-        '007': {{ oid }}
-        '008': {{ oid }}
 ```

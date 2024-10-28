@@ -31,6 +31,16 @@ CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')
 with open(CONFIG_FILE, 'r', encoding='utf-8')as fileopen:
     CONFIG = yaml.load(fileopen, Loader=yaml.FullLoader)
 
+for bank in CONFIG['banks'].keys():
+    auth_scheme_count = 0
+    for scheme in ['v1', 'v2', 'v3']:
+        if scheme in CONFIG['banks']['snmp']:
+            auth_scheme_count += 1
+    if auth_scheme_count != 1:
+        raise AttributeError(f'Bank {bank} contains incorrect number of '
+                             f'authentication schemes in config. Expected 1, '
+                             f'got {auth_scheme_count}')
+
 # Set up logger for this module
 nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
@@ -72,6 +82,9 @@ class SerialListener:
         self.read_buffer = []
 
         self.snmp_user = None
+        self.snmp_version = None
+        self.public_community_name = None
+        self.private_community_name = None
 
         self.timeout = int(CONFIG['snmp_retry']['timeout'])
 
@@ -161,7 +174,8 @@ class SerialListener:
 
             # create new command object
             new_cmd = HealthcheckCmd(
-                agent_ip, agent_port,
+                agent_ip, agent_port, self.snmp_version,
+                self.public_community_name,
                 self.snmp_user.username,
                 self.snmp_user.auth, self.snmp_user.priv,
                 self.snmp_user.auth_protocol,
@@ -195,7 +209,8 @@ class SerialListener:
 
         # create new command object
         new_cmd = PowerChangeCmd(
-            agent_ip, agent_port,
+            agent_ip, agent_port, self.snmp_version,
+            self.private_community_name,
             self.snmp_user.username,
             self.snmp_user.auth, self.snmp_user.priv,
             self.snmp_user.auth_protocol, self.snmp_user.priv_procotol,
@@ -289,13 +304,24 @@ class SerialListener:
                         cmd, bank, port = parsed_tokens
                         logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
 
-                        self.snmp_user = SnmpUser(
-                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
-                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
-                            CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
-                            pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
-                            pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
-                        )
+                        if 'v1' in CONFIG['banks'][f'{int(bank):03d}']['snmp']:
+                            self.snmp_version = 1
+                            self.public_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v1']['public_community']
+                            self.private_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v1']['private_community']
+
+                        elif 'v2' in CONFIG['banks'][f'{int(bank):03d}']['snmp']:
+                            self.snmp_version = 2
+                            self.public_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v2']['public_community']
+                            self.private_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v2']['private_community']
+                        elif 'v3' in CONFIG['banks'][f'{int(bank):03d}']['snmp']:
+                            self.snmp_version = 3
+                            self.snmp_user = SnmpUser(
+                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
+                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
+                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
+                                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
+                                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
+                            )
 
                         agent_ip = CONFIG['banks'][f'{int(bank):03d}']['snmp']['ip_address']
                         agent_port = int(CONFIG['banks'][f'{int(bank):03d}']['snmp']['port'])

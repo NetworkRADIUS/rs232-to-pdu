@@ -23,7 +23,8 @@ class HealthcheckCmd(BaseSnmpCmd):
     Clas for creating and sending GET commands to PDU
     """
     def __init__(self,
-                 agent_ip: str, agent_port: int,
+                 agent_ip: str, agent_port: int, version: int,
+                 community_name: str,
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
@@ -50,7 +51,7 @@ class HealthcheckCmd(BaseSnmpCmd):
             target_obj = ('SNMPv2-MIB', 'sysName', 0)
 
         # Call parent class to initiate attributes
-        super().__init__(agent_ip, agent_port,
+        super().__init__(agent_ip, agent_port, version, community_name,
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
                          None, target_obj,
@@ -78,25 +79,41 @@ class HealthcheckCmd(BaseSnmpCmd):
                                                      representing MIBs
         """
         # Creates required objects and sends GET command
-
-        results = await pysnmp.getCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.UsmUserData(
-                userName=self.user.username,
-                authKey=self.user.auth,
-                privKey=self.user.priv,
-                authProtocol=self.user.auth_protocol,
-                privProtocol=self.user.priv_procotol
-            ),
-            pysnmp.UdpTransportTarget(
-                (self.agent_loc.agent_ip,
-                 self.agent_loc.agent_port)
-            ),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(
-                pysnmp.ObjectIdentity(*self.pdu_object.object_identities)
+        if self.version == 1 or self.version == 2:
+            results = await pysnmp.getCmd(
+                pysnmp.SnmpEngine(),
+                pysnmp.CommunityData(
+                    self.community_name,
+                    mpModel = 0 if self.version == 1 else 1
+                ),
+                pysnmp.UdpTransportTarget(
+                    (self.agent_loc.agent_ip,
+                     self.agent_loc.agent_port)
+                ),
+                pysnmp.ContextData(),
+                pysnmp.ObjectType(
+                    pysnmp.ObjectIdentity(*self.pdu_object.object_identities)
+                )
             )
-        )
+        else:
+            results = await pysnmp.getCmd(
+                pysnmp.SnmpEngine(),
+                pysnmp.UsmUserData(
+                    userName=self.user.username,
+                    authKey=self.user.auth,
+                    privKey=self.user.priv,
+                    authProtocol=self.user.auth_protocol,
+                    privProtocol=self.user.priv_procotol
+                ),
+                pysnmp.UdpTransportTarget(
+                    (self.agent_loc.agent_ip,
+                     self.agent_loc.agent_port)
+                ),
+                pysnmp.ContextData(),
+                pysnmp.ObjectType(
+                    pysnmp.ObjectIdentity(*self.pdu_object.object_identities)
+                )
+            )
 
         return results
 

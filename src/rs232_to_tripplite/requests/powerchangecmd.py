@@ -23,7 +23,8 @@ class PowerChangeCmd(BaseSnmpCmd):
     Class for creating and sending SET command to PDU
     """
     def __init__(self,
-                 agent_ip: str, agent_port: int,
+                 agent_ip: str, agent_port: int, version: int,
+                 community_name: str,
                  user: str, auth: str, priv: str,
                  auth_protocol: tuple, priv_protocol: tuple,
                  timeout: int, max_attempts: int, retry_delay: int,
@@ -53,7 +54,7 @@ class PowerChangeCmd(BaseSnmpCmd):
         """
 
         # Call parent class to initiate attributes
-        super().__init__(agent_ip, agent_port,
+        super().__init__(agent_ip, agent_port, version, community_name,
                          user, auth, priv, auth_protocol, priv_protocol,
                          timeout, max_attempts, retry_delay,
                          object_value, object_identities,
@@ -84,25 +85,43 @@ class PowerChangeCmd(BaseSnmpCmd):
                                                      representing MIBs
         """
         # Creates required objects and sends SET command
-        results = await pysnmp.setCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.UsmUserData(
-                userName=self.user.username,
-                authKey=self.user.auth,
-                privKey=self.user.priv,
-                authProtocol=self.user.auth_protocol,
-                privProtocol=self.user.priv_procotol
-            ),
-            pysnmp.UdpTransportTarget(
-                (self.agent_loc.agent_ip,
-                 self.agent_loc.agent_port)
-            ),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(
-                pysnmp.ObjectIdentity(*self.pdu_object.object_identities),
-                pysnmp.Integer(self.pdu_object.object_value)
+        if self.version == 1 or self.version == 2:
+            results = await pysnmp.setCmd(
+                pysnmp.SnmpEngine(),
+                pysnmp.CommunityData(
+                    self.community_name,
+                    mpModel = 0 if self.version == 1 else 1
+                ),
+                pysnmp.UdpTransportTarget(
+                    (self.agent_loc.agent_ip,
+                     self.agent_loc.agent_port)
+                ),
+                pysnmp.ContextData(),
+                pysnmp.ObjectType(
+                    pysnmp.ObjectIdentity(*self.pdu_object.object_identities),
+                    pysnmp.Integer(self.pdu_object.object_value)
+                )
             )
-        )
+        else:
+            results = await pysnmp.setCmd(
+                pysnmp.SnmpEngine(),
+                pysnmp.UsmUserData(
+                    userName=self.user.username,
+                    authKey=self.user.auth,
+                    privKey=self.user.priv,
+                    authProtocol=self.user.auth_protocol,
+                    privProtocol=self.user.priv_procotol
+                ),
+                pysnmp.UdpTransportTarget(
+                    (self.agent_loc.agent_ip,
+                     self.agent_loc.agent_port)
+                ),
+                pysnmp.ContextData(),
+                pysnmp.ObjectType(
+                    pysnmp.ObjectIdentity(*self.pdu_object.object_identities),
+                    pysnmp.Integer(self.pdu_object.object_value)
+                )
+            )
 
         return results
 
