@@ -28,7 +28,7 @@ event, but continue on with other operations.
 Health checks will have priority over other commands. Even though health checks will be placed into the same buffer as 
 others, health checks will always have the highest possible priority.
 
-Healthcheck frequency are configurable in the `config.yaml` file, under `healthcheck.frequency`. T
+Healthcheck frequency are configurable in the `config.yaml` file, under `healthcheck.frequency`.
 
 ---
 
