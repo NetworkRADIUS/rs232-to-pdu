@@ -313,14 +313,31 @@ class SerialListener:
                             self.snmp_version = 2
                             self.public_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v2']['public_community']
                             self.private_community_name = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v2']['private_community']
+
                         elif 'v3' in CONFIG['banks'][f'{int(bank):03d}']['snmp']:
                             self.snmp_version = 3
-                            self.snmp_user = SnmpUser(
-                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
-                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
-                                CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
-                                pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
-                                pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
+
+                            security_level = CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['security_level']
+                            if security_level == 'noAuthNoPriv':
+                                self.snmp_user = SnmpUser(
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
+                                    None, None, None, None
+                                )
+                            elif security_level == 'authNoPriv':
+                                self.snmp_user = SnmpUser(
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
+                                    None,
+                                    pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
+                                    None
+                                )
+                            elif security_level == 'authPriv':
+                                self.snmp_user = SnmpUser(
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['user'],
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
+                                    CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
+                                    pysnmp.usmHMACSHAAuthProtocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
+                                    pysnmp.usmAesCfb128Protocol if CONFIG['banks'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
                             )
 
                         agent_ip = CONFIG['banks'][f'{int(bank):03d}']['snmp']['ip_address']

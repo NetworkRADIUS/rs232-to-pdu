@@ -52,6 +52,13 @@ that only a single version is allowed for each bank. That is, a bank cannot use 
 
 On config load, a check is performed to ensured that each bank uses exactly one authentication scheme.
 
+When using SNMP v3, the user may also choose what security level they desire. The accepted values are ```noAuthNoPriv```
+, ```authNoPriv```, and ```authPriv```.
+
+```noAuthNoPriv```: SNMP request will be sent without any credentials aside from username (no authentication or confidentiality)\
+```authNoPriv```: SNMP request will be sent with a username and authorization passphrase (authentication but no confidentiality)\
+```authPriv```: SNMP request will be sent with username, authorization and privacy passphrase (authentication and confidentiality)
+
 ---
 
 ## Config Format
@@ -84,6 +91,7 @@ conform the yaml format and have the following sections.
 &emsp;&emsp;&emsp; \- ```auth_passphrase```: string value of authentication passphrase\
 &emsp;&emsp;&emsp; \- ```priv_protocol```: string value of privacy protocol\
 &emsp;&emsp;&emsp; \- ```priv_passphrase```: string value of privacy passphrase\
+&emsp;&emsp;&emsp; \- ```security_level```: ```noAuthNoPriv``` | ```authNoPriv``` | ```authPriv```\
 &emsp;&emsp; \- ```ip_address```: string value of IP address of SNMP agent\
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
 &emsp;&emsp; \- ```outlets```:\
@@ -109,8 +117,8 @@ banks:
   '001':
     snmp:
       v1:
-        public_community: {{ community_name }}
-        private_community: {{ community_name }}
+        public_community: {{ public_community_name }}
+        private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:
@@ -119,8 +127,8 @@ banks:
   '002':
     snmp:
       v2:
-        public_community: {{ community_name }}
-        private_community: {{ community_name }}
+        public_community: {{ public_community_name }}
+        private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:
@@ -134,6 +142,7 @@ banks:
         auth_passphrase: '{{ snmp_auth_passphrase }}'
         priv_protocol: {{ snmp_priv }}
         priv_passphrase: '{{ snmp_priv_passphrase }}'
+        security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:

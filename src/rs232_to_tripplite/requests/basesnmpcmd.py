@@ -48,10 +48,10 @@ class SnmpUser:
                                tuple of numbers (for pysnmp)
     """
     username: str
-    auth: str
-    priv: str
-    auth_protocol: tuple
-    priv_procotol: tuple
+    auth: str | None
+    priv: str | None
+    auth_protocol: tuple | None
+    priv_procotol: tuple | None
 
 @dataclass
 class PduObject:

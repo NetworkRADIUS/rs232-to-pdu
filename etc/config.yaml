@@ -15,8 +15,8 @@ banks:
   '001':
     snmp:
       v1:
-        public_community: {{ community_name }}
-        private_community: {{ community_name }}
+        public_community: {{ public_community_name }}
+        private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:
@@ -25,8 +25,8 @@ banks:
   '002':
     snmp:
       v2:
-        public_community: {{ community_name }}
-        private_community: {{ community_name }}
+        public_community: {{ public_community_name }}
+        private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:
@@ -40,6 +40,7 @@ banks:
         auth_passphrase: '{{ snmp_auth_passphrase }}'
         priv_protocol: {{ snmp_priv }}
         priv_passphrase: '{{ snmp_priv_passphrase }}'
+        security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
       outlets:
