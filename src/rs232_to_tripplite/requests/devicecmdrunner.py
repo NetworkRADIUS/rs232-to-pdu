@@ -1,7 +1,7 @@
 """
 Contains class that acts as the queue of commands to send.
 
-Class is needed to prevent overloading SNMP agent with too many commands at
+Class is needed to prevent overloading agents with too many commands at
 once. This can cause commands to be timed-out.
 
 Uses priority queue to prioritize health check commands
@@ -28,7 +28,7 @@ class DeviceCmdRunner:
         self.prio_counter = 0
 
     async def put_into_queue(self,
-                             snmp_cmd: BaseDeviceCmd,
+                             device_cmd: BaseDeviceCmd,
                              high_prio: bool = False) -> None:
         """
         Puts an command item into the queue.
@@ -38,7 +38,7 @@ class DeviceCmdRunner:
         New low priority items have lowest priority (run last)
 
         Args:
-            snmp_cmd (BaseDeviceCmd): command object to be stored in queue
+            device_cmd (BaseDeviceCmd): command object to be stored in queue
             high_prio (bool): whether the command should be run first or last
         """
         # priority is either positive or negative depending on high/low prio
@@ -46,9 +46,9 @@ class DeviceCmdRunner:
         self.prio_counter += 1
 
         # puts item into queue
-        await self.queue.put((priority, snmp_cmd))
+        await self.queue.put((priority, device_cmd))
 
-    async def queue_processor(self, event_loop: asyncio.BaseEventLoop):
+    async def queue_processor(self, event_loop: asyncio.AbstractEventLoop):
         """
         Gets top priority item from queue and runs the command
 
@@ -63,5 +63,5 @@ class DeviceCmdRunner:
             # retrieve next item from queue and run the command
             # Will not grab next item until the previous command has been
             # completed
-            priority, snmp_cmd = await self.queue.get()
-            success = await snmp_cmd.run_cmd()
+            priority, device_cmd = await self.queue.get()
+            success = await device_cmd.run_cmd()

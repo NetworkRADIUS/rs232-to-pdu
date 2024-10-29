@@ -49,13 +49,6 @@ nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
 
-class PowerbarValues(enum.Enum):
-    """Possible power values for powerbar ports
-    """
-    OFF = 1
-    ON = 2
-    CYCLE = 3
-
 POWERBAR_VALUES = {
     'on': pysnmp.Integer(2),
     'of': pysnmp.Integer(1),
