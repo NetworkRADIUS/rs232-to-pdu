@@ -11,13 +11,14 @@ Date: 2024-08-26
 """
 import asyncio
 
-from rs232_to_tripplite.requests.basesnmpcmd import BaseSnmpCmd
+from rs232_to_tripplite.requests.basedevicecmd import BaseDeviceCmd
 
 
-class SnmpCmdRunner:
+class DeviceCmdRunner:
     """
     Class that places commands in a queue and runs them one after another
     """
+
     def __init__(self) -> None:
         # Initializes an priority queue with no size limit
         self.queue = asyncio.PriorityQueue()
@@ -26,9 +27,8 @@ class SnmpCmdRunner:
         # priority of new items
         self.prio_counter = 0
 
-
     async def put_into_queue(self,
-                             snmp_cmd: BaseSnmpCmd,
+                             snmp_cmd: BaseDeviceCmd,
                              high_prio: bool = False) -> None:
         """
         Puts an command item into the queue.
@@ -38,7 +38,7 @@ class SnmpCmdRunner:
         New low priority items have lowest priority (run last)
 
         Args:
-            snmp_cmd (BaseSnmpCmd): command object to be stored in queue
+            snmp_cmd (BaseDeviceCmd): command object to be stored in queue
             high_prio (bool): whether the command should be run first or last
         """
         # priority is either positive or negative depending on high/low prio
@@ -60,7 +60,6 @@ class SnmpCmdRunner:
         # as long as the event loop is running, we should be expecting new
         # items to be put into the queue
         while event_loop.is_running():
-
             # retrieve next item from queue and run the command
             # Will not grab next item until the previous command has been
             # completed

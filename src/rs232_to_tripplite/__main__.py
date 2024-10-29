@@ -20,24 +20,27 @@ import rs232_to_tripplite.logging.loggingfactory as nrlogfac
 from rs232_to_tripplite.connectors.conn_serial import SerialConnection
 from rs232_to_tripplite.parsers.parse_base import ParseError
 from rs232_to_tripplite.parsers.parse_kvmseq import ParserKvmSequence
-from rs232_to_tripplite.requests.basesnmpcmd import SnmpUser
-from rs232_to_tripplite.requests.healthcheckcmd import HealthcheckCmd
-from rs232_to_tripplite.requests.powerchangecmd import PowerChangeCmd
-from rs232_to_tripplite.requests.snmpcmdrunner import SnmpCmdRunner
+from rs232_to_tripplite.requests.tripplitedevicehealthcheckcmd import TrippliteDeviceHealthcheckCmd
+from rs232_to_tripplite.requests.tripplitedevicepowerchangecmd import TrippliteDevicePowerChangeCmd
+from rs232_to_tripplite.requests.devicecmdrunner import DeviceCmdRunner
 from rs232_to_tripplite.scheduler.sersnmpscheduler import ListenerScheduler
+from rs232_to_tripplite.device import create_device_from_config_dict, Device
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')
 with open(CONFIG_FILE, 'r', encoding='utf-8')as fileopen:
-    CONFIG = yaml.load(fileopen, Loader=yaml.FullLoader)
+    config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
-for bank in CONFIG['devices'].keys():
+# Perform input validation on configs
+# Validation items:
+#   - each bank only uses a single authentication scheme
+for __device in config['devices'].keys():
     auth_scheme_count = 0
     for scheme in ['v1', 'v2', 'v3']:
-        if scheme in CONFIG['devices']['snmp']:
+        if scheme in config['devices']['snmp']:
             auth_scheme_count += 1
     if auth_scheme_count != 1:
-        raise AttributeError(f'Bank {bank} contains incorrect number of '
+        raise AttributeError(f'devices {__device} contains incorrect number of '
                              f'authentication schemes in config. Expected 1, '
                              f'got {auth_scheme_count}')
 
@@ -52,6 +55,12 @@ class PowerbarValues(enum.Enum):
     OFF = 1
     ON = 2
     CYCLE = 3
+
+POWERBAR_VALUES = {
+    'on': pysnmp.Integer(2),
+    'of': pysnmp.Integer(1),
+    'cy': pysnmp.Integer(3)
+}
 
 class LookForFileEH(FileSystemEventHandler):
     def __init__(self, file_to_watch, callback: Callable) -> None:
@@ -69,7 +78,7 @@ class SerialListener:
     def __init__(self):
         # Initialize parser and snmp command issuer
         self.kvm_parser = ParserKvmSequence()
-        self.snmp_cmd_runner = SnmpCmdRunner()
+        self.device_cmd_runner = DeviceCmdRunner()
 
         self.event_loop = asyncio.new_event_loop()
         self.scheduler = ListenerScheduler(self.event_loop)
@@ -81,15 +90,17 @@ class SerialListener:
         # Initialization of other variables to be used in class
         self.read_buffer = []
 
-        self.snmp_user = None
-        self.snmp_version = None
-        self.public_community_name = None
-        self.private_community_name = None
+        self.retry = {
+            'max_attempts': int(config['snmp']['retry']['max_attempts']),
+            'retry_delay': int(config['snmp']['retry']['delay']),
+            'timeout': int(config['snmp']['retry']['timeout'])
+        }
 
-        self.timeout = int(CONFIG['snmp_retry']['timeout'])
-
-        self.max_attempts = int(CONFIG['snmp']['retry']['max_attempts'])
-        self.retry_delay = int(CONFIG['snmp']['retry']['delay'])
+        self.devices = {}
+        for device_name in config['devices'].keys():
+            self.devices[device_name] = create_device_from_config_dict(
+                device_name, config['devices'][device_name]
+        )
 
         self.cmd_counter = 0
 
@@ -105,11 +116,11 @@ class SerialListener:
         Returns:
             None
         """
-        self.sysdwd.status('Openning serial port')
+        self.sysdwd.status('Opening serial port')
 
         # Makes the connection
-        serial_port    = CONFIG['serial']['device']
-        serial_timeout = int(CONFIG['serial']['timeout'])
+        serial_port    = config['serial']['device']
+        serial_timeout = int(config['serial']['timeout'])
         if self.serial_conn.make_connection(serial_port,
                                             timeout=serial_timeout):
             self.sysdwd.status('Serial port successfully opened')
@@ -138,13 +149,13 @@ class SerialListener:
                 self.scheduler.start_reconnect_job(self.attempt_reconnect)
 
                 watch_path = '/'.join(
-                    CONFIG['serial']['device'].split('/')[:-1]
+                    config['serial']['device'].split('/')[:-1]
                 )
                 self.file_watchdog = Observer()
                 self.file_watchdog.schedule(
-                    LookForFileEH(CONFIG['serial']['device'],
-                                self.attempt_reconnect
-                    ),
+                    LookForFileEH(config['serial']['device'],
+                                  self.attempt_reconnect
+                                  ),
                     watch_path
                 )
                 self.file_watchdog.start()
@@ -152,80 +163,52 @@ class SerialListener:
 
     def add_healthcheck_to_queue(self) -> None:
         """
-        Adds a health check command to the priority queue with high priority
-
-        Args:
-            None
+        Adds a healthcheck to the cmd queue
 
         Returns:
-            None
+
         """
-        for bank_num in CONFIG['devices'].keys():
-            self.snmp_user = SnmpUser(
-                CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['v3']['user'],
-                CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['v3']['auth_passphrase'],
-                CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['v3']['priv_passphrase'],
-                pysnmp.usmHMACSHAAuthProtocol if CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
-                pysnmp.usmAesCfb128Protocol if CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
-            )
-
-            agent_ip = CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['ip_address']
-            agent_port = int(CONFIG['devices'][f'{int(bank_num):03d}']['snmp']['port'])
-
-            # create new command object
-            new_cmd = HealthcheckCmd(
-                agent_ip, agent_port, self.snmp_version,
-                self.public_community_name,
-                self.snmp_user.username,
-                self.snmp_user.auth, self.snmp_user.priv,
-                self.snmp_user.auth_protocol,
-                self.snmp_user.priv_procotol,
-                self.timeout, self.max_attempts, self.retry_delay,
-                self.cmd_counter, bank_num=bank_num
-            )
-
+        for device in self.devices:
             self.cmd_counter += 1
-
-            # create new coroutine to add task to queue
             self.event_loop.create_task(
-                self.snmp_cmd_runner.put_into_queue(new_cmd, True)
+                self.device_cmd_runner.put_into_queue(
+                    TrippliteDeviceHealthcheckCmd(
+                        device,
+                        # always check the first outlet
+                        list(device.outlet_oids.keys())[0],
+                        self.retry['timeout'],
+                        self.cmd_counter
+                    )
+                )
             )
 
     def add_power_change_to_queue(
             self,
-            agent_ip: str, agent_port: int,
-            object_value: int, object_identities: str,
-            outlet_bank: int, outlet_port: int
+            device: Device, target_outlet: str, outlet_state: any
         ) -> None:
         """
-        Adds a power change command to the priority queue with low priority
+        Adds a power change to the cmd queue
 
         Args:
-            object_value (int): new value for power outlet MIB
-            object_identities (str): OID for MIB
-            outlet_bank (int): bank number for outlet
-            outlet_port (int): bank number for outlet
+            device: Device object
+            target_outlet: string representation of target outlet
+            outlet_state: desired outlet state (in pysnmp state)
+
+        Returns:
+
         """
-
-        # create new command object
-        new_cmd = PowerChangeCmd(
-            agent_ip, agent_port, self.snmp_version,
-            self.private_community_name,
-            self.snmp_user.username,
-            self.snmp_user.auth, self.snmp_user.priv,
-            self.snmp_user.auth_protocol, self.snmp_user.priv_procotol,
-            self.timeout, self.max_attempts, self.retry_delay,
-            object_value, object_identities,
-            outlet_bank, outlet_port,
-            self.cmd_counter
-        )
-
         self.cmd_counter += 1
-
-        # create new coroutine to add task to queue
         self.event_loop.create_task(
-            self.snmp_cmd_runner.put_into_queue(new_cmd)
+            self.device_cmd_runner.put_into_queue(
+                TrippliteDevicePowerChangeCmd(
+                    device, target_outlet, outlet_state,
+                    self.retry['max_attempts'], self.retry['delay'],
+                    self.retry['timeout'],
+                    self.cmd_counter
+                )
+            )
         )
+
 
     def start(self):
         """
@@ -242,17 +225,17 @@ class SerialListener:
         self.sysdwd.status('Initiating application')
 
         while not self.make_connection():
-            time.sleep(self.timeout)
+            time.sleep(config['serial']['timeout'])
 
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
 
         self.event_loop.create_task(
-            self.snmp_cmd_runner.queue_processor(self.event_loop)
+            self.device_cmd_runner.queue_processor(self.event_loop)
         )
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
         self.scheduler.start_healthcheck_job(
-            self.add_healthcheck_to_queue, CONFIG['healthcheck']['frequency']
+            self.add_healthcheck_to_queue, config['healthcheck']['frequency']
         )
         self.scheduler.start_systemd_notify(
             self.sysdwd.notify, self.sysdwd.timeout / 2e6
@@ -269,13 +252,10 @@ class SerialListener:
 
     def read_serial_conn(self):
         """
-        Listener callback function to read serial input
+        Parses input from rs232 device and add cmd to queue if needed
 
-        Args:
-            None
-        
         Returns:
-            None
+
         """
         self.read_buffer += self.serial_conn.read_all_waiting_bytes()
 
@@ -283,97 +263,46 @@ class SerialListener:
 
         for cursor_pos, buffer_char in enumerate(self.read_buffer):
 
+            if buffer_char != '\r':
+                continue
+
             # If the \r char is encountered, attempt to parse sequence
-            if buffer_char == '\r':
-                try:
-                    logger.debug((f'Received command sequence: "'
-                                  f'{"".join(self.read_buffer)}"')
-                                 )
-                    # Attempt to parse part of read buffer containing sequence
-                    parsed_tokens = self.kvm_parser.parse(
-                        ''.join(
-                            self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
-                        )
+            try:
+                logger.debug((f'Received command sequence: "'
+                              f'{"".join(self.read_buffer)}"')
+                             )
+                # Attempt to parse part of read buffer containing sequence
+                parsed_tokens = self.kvm_parser.parse(
+                    ''.join(
+                        self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
+                    )
+                )
+
+            # Errors will be raised when only a portion of the sequence has been
+            # received and attempted to be parsed
+            except ParseError:
+                logger.warning((f'Parser failed to parse: "'
+                            f'{"".join(self.read_buffer)}"')
+                           )
+
+            else:
+                # Upon encountering quit and empty sequence, do nothing
+                if parsed_tokens[0] in ['quit', '']:
+                    logger.info('Quit or empty sequence detected')
+
+                else:
+                    cmd, device, outlet = parsed_tokens
+                    logger.info(f'Setting Device {device} Outlet {outlet} to '
+                                f'{cmd}')
+
+                    self.add_power_change_to_queue(
+                        device, f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
                     )
 
-                    # Upon encountering quit and empty sequence, do nothing
-                    if parsed_tokens[0] in ['quit', '']:
-                        logger.info('Quit or empty sequence detected')
-                    
-                    else:
-                        cmd, bank, port = parsed_tokens
-                        logger.info(f'Setting Bank {bank} Port {port} to {cmd}')
-
-                        if 'v1' in CONFIG['devices'][f'{int(bank):03d}']['snmp']:
-                            self.snmp_version = 1
-                            self.public_community_name = CONFIG['devices'][f'{int(bank):03d}']['snmp']['v1']['public_community']
-                            self.private_community_name = CONFIG['devices'][f'{int(bank):03d}']['snmp']['v1']['private_community']
-
-                        elif 'v2' in CONFIG['devices'][f'{int(bank):03d}']['snmp']:
-                            self.snmp_version = 2
-                            self.public_community_name = CONFIG['devices'][f'{int(bank):03d}']['snmp']['v2']['public_community']
-                            self.private_community_name = CONFIG['devices'][f'{int(bank):03d}']['snmp']['v2']['private_community']
-
-                        elif 'v3' in CONFIG['devices'][f'{int(bank):03d}']['snmp']:
-                            self.snmp_version = 3
-
-                            security_level = CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['security_level']
-                            if security_level == 'noAuthNoPriv':
-                                self.snmp_user = SnmpUser(
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['user'],
-                                    None, None, None, None
-                                )
-                            elif security_level == 'authNoPriv':
-                                self.snmp_user = SnmpUser(
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['user'],
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
-                                    None,
-                                    pysnmp.usmHMACSHAAuthProtocol if CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
-                                    None
-                                )
-                            elif security_level == 'authPriv':
-                                self.snmp_user = SnmpUser(
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['user'],
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['auth_passphrase'],
-                                    CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['priv_passphrase'],
-                                    pysnmp.usmHMACSHAAuthProtocol if CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['auth_protocol'] == 'SHA' else None,
-                                    pysnmp.usmAesCfb128Protocol if CONFIG['devices'][f'{int(bank):03d}']['snmp']['v3']['priv_protocol'] == 'AES' else None
-                            )
-
-                        agent_ip = CONFIG['devices'][f'{int(bank):03d}']['snmp']['ip_address']
-                        agent_port = int(CONFIG['devices'][f'{int(bank):03d}']['snmp']['port'])
-                        obj_oid = (CONFIG['devices'][f'{int(bank):03d}']['snmp']['outlets'][f'{int(port):03d}'],)
-
-                        match cmd:
-                            case 'on':
-                                self.add_power_change_to_queue(
-                                    agent_ip, agent_port,
-                                    pysnmp.Integer(PowerbarValues.ON.value),
-                                    obj_oid, bank, port
-                                )
-                            case 'of':
-                                self.add_power_change_to_queue(
-                                    agent_ip, agent_port,
-                                    pysnmp.Integer(PowerbarValues.OFF.value),
-                                    obj_oid, bank, port
-                                )
-                            case 'cy':
-                                self.add_power_change_to_queue(
-                                    agent_ip, agent_port,
-                                    pysnmp.Integer(PowerbarValues.CYCLE.value),
-                                    obj_oid, bank, port
-                                )
-
-                # Errors will be raised when only a portion of the sequence has been
-                # received and attempted to be parsed
-                except ParseError:
-                    logger.warning((f'Parser failed to parse: "'
-                                    f'{"".join(self.read_buffer)}"')
-                                   )
-                curr_seq_start_pos = cursor_pos + 1
+            curr_seq_start_pos = cursor_pos + 1
 
         # Delete parsed portion of buffer
-        # Note that we do not attempt to re-parse failed sequences because
+        # Note that we do not attempt to reparse failed sequences because
         # we only parse completed (\r at end) sequences
         del self.read_buffer[:curr_seq_start_pos]
 
