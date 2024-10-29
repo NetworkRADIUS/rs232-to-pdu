@@ -113,7 +113,7 @@ snmp:
     delay: 5
     timeout: 5
 
-banks:
+devices:
   '001':
     snmp:
       v1:
