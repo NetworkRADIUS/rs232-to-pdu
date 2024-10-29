@@ -118,7 +118,7 @@ class SnmpDeviceV3(Device):
             name: str, snmp_version: int, ip_address: str, port: int,
             outlet_oids: dict[str: str],
             user: str, auth_protocol: str, auth_passphrase: str,
-            priv_protocol: str, priv_passphrase: str,
+            priv_protocol: str, priv_passphrase: str, security_level: str,
             **kwargs
     ):
         super().__init__(
@@ -132,6 +132,16 @@ class SnmpDeviceV3(Device):
         if priv_protocol == 'AES':
             self.priv_protocol = pysnmp.usmAesCfb128Protocol
         self.priv_passphrase = priv_passphrase
+
+        match security_level:
+            case 'noAuthNoPriv':
+                self.auth_protocol = None
+                self.auth_passphrase = None
+                self.priv_protocol = None
+                self.priv_passphrase = None
+            case 'authNoPriv':
+                self.priv_protocol = None
+                self.priv_passphrase = None
 
     async def get_outlet_state(self, outlet):
         """
@@ -223,10 +233,12 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
             auth_passphrase = config_dict['snmp']['v3']['auth_passphrase']
             priv_protocol = config_dict['snmp']['v3']['priv_protocol']
             priv_passphrase = config_dict['snmp']['v3']['priv_passphrase']
+            security_level = config_dict['snmp']['v3']['security_level']
             return SnmpDeviceV3(
                 name, 1, ip_address, port, outlet_oids,
                 user, auth_protocol, auth_passphrase,
-                priv_protocol, priv_passphrase
+                priv_protocol, priv_passphrase,
+                security_level
             )
 
     # code reaches here if no devices matched above
