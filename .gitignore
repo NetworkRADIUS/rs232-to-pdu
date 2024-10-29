@@ -29,3 +29,4 @@ build/lib/ser2snmp/sersnmprequests/snmpcmdrunner.py
 build/lib/ser2snmp/sersnmpscheduler/__init__.py
 build/lib/ser2snmp/sersnmpscheduler/sersnmpscheduler.py
 src/ser2snmp/config.yaml
+test.py
