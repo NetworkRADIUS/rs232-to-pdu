@@ -11,7 +11,7 @@ Date: 2024-08-26
 """
 import asyncio
 
-from rs232_to_tripplite.requests.basedevicecmd import BaseDeviceCmd
+from rs232_to_tripplite.commands import BaseDeviceCommand
 
 
 class DeviceCmdRunner:
@@ -28,7 +28,7 @@ class DeviceCmdRunner:
         self.prio_counter = 0
 
     async def put_into_queue(self,
-                             device_cmd: BaseDeviceCmd,
+                             device_cmd: BaseDeviceCommand,
                              high_prio: bool = False) -> None:
         """
         Puts an command item into the queue.

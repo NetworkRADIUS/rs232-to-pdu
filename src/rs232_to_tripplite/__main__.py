@@ -15,14 +15,14 @@ from watchdog.events import FileSystemEventHandler
 from typing import Callable
 import yaml
 
-import rs232_to_tripplite.logging.loggingfactory as nrlogfac
-from rs232_to_tripplite.connectors.conn_serial import SerialConnection
-from rs232_to_tripplite.parsers.parse_base import ParseError
-from rs232_to_tripplite.parsers.parse_kvmseq import ParserKvmSequence
+import rs232_to_tripplite.logfactory as nrlogfac
+from rs232_to_tripplite.serialconn import SerialConnection
+from rs232_to_tripplite.parsers.base import ParseError
+from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 from rs232_to_tripplite.requests.tripplitedevicehealthcheckcmd import TrippliteDeviceHealthcheckCmd
 from rs232_to_tripplite.requests.tripplitedevicepowerchangecmd import TrippliteDevicePowerChangeCmd
-from rs232_to_tripplite.requests.devicecmdrunner import DeviceCmdRunner
-from rs232_to_tripplite.scheduler.sersnmpscheduler import ListenerScheduler
+from rs232_to_tripplite.cmdrunner import DeviceCmdRunner
+from rs232_to_tripplite.scheduler import ListenerScheduler
 from rs232_to_tripplite.transport.base import create_device_from_config_dict, Device
 
 # Read and setup configs
