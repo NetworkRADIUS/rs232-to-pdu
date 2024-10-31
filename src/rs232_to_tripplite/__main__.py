@@ -5,7 +5,6 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import asyncio
-import enum
 import pathlib
 import time
 import systemd_watchdog as sysdwd
@@ -24,25 +23,12 @@ from rs232_to_tripplite.requests.tripplitedevicehealthcheckcmd import TrippliteD
 from rs232_to_tripplite.requests.tripplitedevicepowerchangecmd import TrippliteDevicePowerChangeCmd
 from rs232_to_tripplite.requests.devicecmdrunner import DeviceCmdRunner
 from rs232_to_tripplite.scheduler.sersnmpscheduler import ListenerScheduler
-from rs232_to_tripplite.device import create_device_from_config_dict, Device
+from rs232_to_tripplite.transport.base import create_device_from_config_dict, Device
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')
 with open(CONFIG_FILE, 'r', encoding='utf-8')as fileopen:
     config = yaml.load(fileopen, Loader=yaml.FullLoader)
-
-# Perform input validation on configs
-# Validation items:
-#   - each bank only uses a single authentication scheme
-for __device in config['devices'].keys():
-    auth_scheme_count = 0
-    for scheme in ['v1', 'v2', 'v3']:
-        if scheme in config['devices']['snmp']:
-            auth_scheme_count += 1
-    if auth_scheme_count != 1:
-        raise AttributeError(f'devices {__device} contains incorrect number of '
-                             f'authentication schemes in config. Expected 1, '
-                             f'got {auth_scheme_count}')
 
 # Set up logger for this module
 nrlogfac.setup_logging()
@@ -89,10 +75,10 @@ class SerialListener:
             'timeout': int(config['snmp']['retry']['timeout'])
         }
 
-        self.devices = {}
-        for device_name in config['devices'].keys():
+        self.devices: dict[str: Device] = {}
+        for device_name in config['transport'].keys():
             self.devices[device_name] = create_device_from_config_dict(
-                device_name, config['devices'][device_name]
+                device_name, config['transport'][device_name]
         )
 
         self.cmd_counter = 0
@@ -161,14 +147,14 @@ class SerialListener:
         Returns:
 
         """
-        for device in self.devices:
+        for device_name in self.devices:
             self.cmd_counter += 1
             self.event_loop.create_task(
                 self.device_cmd_runner.put_into_queue(
                     TrippliteDeviceHealthcheckCmd(
-                        device,
+                        self.devices[device_name],
                         # always check the first outlet
-                        list(device.outlet_oids.keys())[0],
+                        self.devices[device_name].outlets[0],
                         self.retry['timeout'],
                         self.cmd_counter
                     )

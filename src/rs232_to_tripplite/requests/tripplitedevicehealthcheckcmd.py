@@ -9,7 +9,7 @@ Date: 2024-08-28
 """
 
 import rs232_to_tripplite.logging.loggingfactory as nrlogfac
-from rs232_to_tripplite.device import Device
+from rs232_to_tripplite.transport.base import Device
 from rs232_to_tripplite.requests.basedevicecmd import BaseDeviceCmd
 
 logger = nrlogfac.create_logger(__name__)
@@ -21,23 +21,23 @@ class TrippliteDeviceHealthcheckCmd(BaseDeviceCmd):
     """
     def __init__(
             self,
-            device: Device, target_outlet: str, timeout: int,
+            device: Device, outlet: str, timeout: int,
             cmd_id: int
     ) -> None:
         """
 
         Args:
             device: Device object
-            target_outlet: outlet to check
+            outlet: outlet to check
             timeout: timeout in seconds
             cmd_id: command ID
         """
 
         # Call parent class to initiate attributes
-        super().__init__(device, target_outlet, 0, 0, timeout, cmd_id)
+        super().__init__(device, outlet, 0, 0, timeout, cmd_id)
 
     async def invoke_cmd(self) -> any:
-        return self.device.get_outlet_state(self.target_outlet)
+        return self.device.get_outlet_state(self.outlet)
 
     def handler_cmd_success(self):
         logger.info((f'Command #{self.cmd_id}: PDU health check passed for '

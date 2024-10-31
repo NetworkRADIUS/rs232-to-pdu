@@ -21,13 +21,13 @@ class BaseDeviceCmd(ABC):
 
     def __init__(
             self,
-            device: Device, target_outlet: str,
+            device: Device, outlet: str,
             max_attempts: int, delay: int, timeout: int,
             cmd_id: int
     ) -> None:
 
         self.device = device
-        self.target_outlet = target_outlet
+        self.outlet = outlet
 
         self.max_attempts = max_attempts
         self.delay = delay

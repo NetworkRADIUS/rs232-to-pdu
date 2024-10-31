@@ -1,201 +1,48 @@
-from abc import ABC, abstractmethod
+from rs232_to_tripplite.transport.base import Transport
+from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, TransportSnmpV3
 
-import pysnmp.hlapi.asyncio as pysnmp
 
-
-class Device(ABC):
+class Device:
     """
-    Abstract device class
+    Class representing a Device with controllable outlets
     """
-
     def __init__(
             self,
-            name: str, snmp_version: int, ip_address: str, port: int,
-            outlet_oids: dict[str: str], **kwargs
+            name: str, outlets: list[str], transport: Transport
     ):
-        self.name = name
-        self.snmp_version = snmp_version
-        self.ip_address = ip_address
-        self.port = port
-        self.outlet_oids = outlet_oids
+        """
 
-    @abstractmethod
+        Args:
+            name: device name
+            outlets: list of outlet names
+            transport: object for sending requests
+        """
+        self.name = name
+        self.outlets = outlets
+        self.transport = transport
+
     def get_outlet_state(self, outlet: str) -> any:
         """
-        Abstract method for getting current state of an outlet
-
+        method for retrieving an outlet's state using the transport
         Args:
             outlet: string representation of outlet
 
         Returns:
-            state of the outlet
+            outlet state
         """
-        ...
+        return self.transport.get_outlet_state(outlet)
 
-    @abstractmethod
     def set_outlet_state(self, outlet: str, state: any) -> any:
         """
-        Abstract method for setting the state of an outlet
-
+        method for setting an outlet's state using the transport'
         Args:
             outlet: string representation of outlet
-            state: new state of the outlet
+            state: desired outlet state
 
         Returns:
-            return data from setting the outlet
+            outlet state after sending the request
         """
-        ...
-
-
-class SnmpDeviceV1V2(Device):
-    """
-    Device class for SNMP devices using v1 or v2 authentication schemes
-    """
-    def __init__(
-            self,
-            name: str, snmp_version: int, ip_address: str, port: int,
-            outlet_oids: dict[str: str],
-            public_community: str, private_community: str,
-            **kwargs
-    ):
-        super().__init__(
-            name, snmp_version, ip_address, port, outlet_oids, **kwargs
-        )
-
-        self.public_community = public_community
-        self.private_community = private_community
-
-    async def get_outlet_state(self, outlet: str) -> any:
-        """
-        Sends SNMP GET command to get state of outlet
-
-        Args:
-            outlet: string representation of outlet
-
-        Returns:
-            current state of the outlet
-        """
-        results = await pysnmp.getCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.CommunityData(self.public_community,
-                                 # use correct model based on v1 or v2
-                                 mpModel = 0 if self.snmp_version == 1 else 1),
-            pysnmp.UdpTransportTarget((self.ip_address, self.port)),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(pysnmp.ObjectIdentity(self.outlet_oids[outlet]),)
-        )
-
-        return results
-
-    async def set_outlet_state(self, outlet: str, state: any) -> any:
-        """
-        Sends SNMP SET command to set state of an outlet
-        Args:
-            outlet: string representation of outlet
-            state: desired state of outlet, already in a pysnmp datatype
-
-        Returns:
-            current state of the outlet
-        """
-        results = await pysnmp.setCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.CommunityData(self.public_community,
-                                 mpModel = 0 if self.snmp_version == 1 else 1),
-            pysnmp.UdpTransportTarget((self.ip_address, self.port)),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(pysnmp.ObjectIdentity(self.outlet_oids[outlet]),
-                              state)
-        )
-
-        return results
-
-class SnmpDeviceV3(Device):
-    """
-    Device class for SNMP devices using v3 authentication scheme
-    """
-    def __init__(
-            self,
-            name: str, snmp_version: int, ip_address: str, port: int,
-            outlet_oids: dict[str: str],
-            user: str, auth_protocol: str, auth_passphrase: str,
-            priv_protocol: str, priv_passphrase: str, security_level: str,
-            **kwargs
-    ):
-        super().__init__(
-            name, snmp_version, ip_address, port, outlet_oids, **kwargs
-        )
-
-        self.user = user
-        if auth_protocol == 'SHA':
-            self.auth_protocol = pysnmp.usmHMACSHAAuthProtocol
-        self.auth_passphrase = auth_passphrase
-        if priv_protocol == 'AES':
-            self.priv_protocol = pysnmp.usmAesCfb128Protocol
-        self.priv_passphrase = priv_passphrase
-
-        match security_level:
-            case 'noAuthNoPriv':
-                self.auth_protocol = None
-                self.auth_passphrase = None
-                self.priv_protocol = None
-                self.priv_passphrase = None
-            case 'authNoPriv':
-                self.priv_protocol = None
-                self.priv_passphrase = None
-
-    async def get_outlet_state(self, outlet):
-        """
-        Sends SNMP GET command to get state of outlet
-
-        Args:
-            outlet: string representation of outlet
-
-        Returns:
-            current state of the outlet
-        """
-        results = await pysnmp.getCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.UsmUserData(
-                self.user,
-                authProtocol = self.auth_protocol,
-                authKey = self.auth_passphrase,
-                privProtocol = self.priv_protocol,
-                privKey = self.priv_passphrase,
-            ),
-            pysnmp.UdpTransportTarget((self.ip_address, self.port)),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(pysnmp.ObjectIdentity(self.outlet_oids[outlet]),)
-        )
-
-        return results
-
-    async def set_outlet_state(self, outlet, state):
-        """
-        Sends SNMP SET command to set state of an outlet
-        Args:
-            outlet: string representation of outlet
-            state: desired state of outlet, already in a pysnmp datatype
-
-        Returns:
-            current state of the outlet
-        """
-        results = await pysnmp.setCmd(
-            pysnmp.SnmpEngine(),
-            pysnmp.UsmUserData(
-                self.user,
-                authProtocol = self.auth_protocol,
-                authKey = self.auth_passphrase,
-                privProtocol = self.priv_protocol,
-                privKey = self.priv_passphrase,
-            ),
-            pysnmp.UdpTransportTarget((self.ip_address, self.port)),
-            pysnmp.ContextData(),
-            pysnmp.ObjectType(pysnmp.ObjectIdentity(self.outlet_oids[outlet]),
-                              state)
-        )
-
-        return results
-
+        self.transport.set_outlet_state(outlet, state)
 
 def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
     """
@@ -208,38 +55,61 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
     Returns:
         Device instance
     """
+    outlets = config_dict['outlets']
+    transport = None  # should be over-writen or exception thrown
+
     if 'snmp' in config_dict:
         ip_address = config_dict['snmp']['ip_address']
         port = config_dict['snmp']['port']
-        outlet_oids = config_dict['snmp']['outlets']
 
         if 'v1' in config_dict['snmp']:
+            # ensure only 1 SNMP version is present
+            if 'v2' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
+                raise AttributeError(f'Device {name} contains multiple SNMP '
+                                     f'authentication schemes')
             public_community = config_dict['snmp']['v1']['public_community']
             private_community = config_dict['snmp']['v1']['private_community']
-            return SnmpDeviceV1V2(
-                name, 1, ip_address, port, outlet_oids,
+
+            transport = TransportSnmpV1V2(
+                outlets, 1, ip_address, port,
                 public_community, private_community
             )
+
         elif 'v2' in config_dict['snmp']:
+            # ensure only 1 SNMP version is present
+            if 'v1' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
+                raise AttributeError(f'Device {name} contains multiple SNMP '
+                                     f'authentication schemes')
             public_community = config_dict['snmp']['v2']['public_community']
             private_community = config_dict['snmp']['v2']['private_community']
-            return SnmpDeviceV1V2(
-                name, 1, ip_address, port, outlet_oids,
+
+            transport = TransportSnmpV1V2(
+                outlets, 2, ip_address, port,
                 public_community, private_community
             )
+
         elif 'v3' in config_dict['snmp']:
+            # ensure only 1 SNMP version is present
+            if 'v1' in config_dict['snmp'] or 'v2' in config_dict['snmp']:
+                raise AttributeError(f'Device {name} contains multiple SNMP '
+                                     f'authentication schemes')
+
             user = config_dict['snmp']['v3']['user']
             auth_protocol = config_dict['snmp']['v3']['auth_protocol']
             auth_passphrase = config_dict['snmp']['v3']['auth_passphrase']
             priv_protocol = config_dict['snmp']['v3']['priv_protocol']
             priv_passphrase = config_dict['snmp']['v3']['priv_passphrase']
             security_level = config_dict['snmp']['v3']['security_level']
-            return SnmpDeviceV3(
-                name, 1, ip_address, port, outlet_oids,
+
+            transport = TransportSnmpV3(
+                outlets, 3, ip_address, port,
                 user, auth_protocol, auth_passphrase,
                 priv_protocol, priv_passphrase,
                 security_level
             )
 
-    # code reaches here if no devices matched above
-    raise TypeError(f'Unsupported device type for device {name}')
+    if transport is None:
+        # raise error if transport is not supported
+        raise TypeError(f'Unsupported transport for device {name}')
+
+    return Device(name, outlets.keys(), transport)
