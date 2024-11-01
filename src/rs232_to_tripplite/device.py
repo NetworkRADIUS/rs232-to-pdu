@@ -15,6 +15,8 @@ from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3, TransportSnmp
 
+import pysnmp.hlapi.asyncio as pysnmp
+
 class Device:
     """
     Class representing a Device with controllable outlets
