@@ -1,3 +1,6 @@
+"""
+setup.py script for building packages
+"""
 from setuptools import setup, find_packages
 
 setup(
@@ -6,7 +9,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
 
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf-8').read(), # pylint: disable=consider-using-with
     long_description_content_type='text/markdown',
 
     install_requires=[

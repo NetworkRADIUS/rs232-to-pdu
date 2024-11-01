@@ -1,3 +1,7 @@
+"""
+Contains the transport subclasses for SNMP and the different versions
+"""
+
 import pysnmp.hlapi.asyncio as pysnmp
 from pysnmp.hlapi.asyncio import CommunityData, UsmUserData
 
@@ -10,7 +14,7 @@ class TransportSnmp(Transport):
     and retrievals
     """
 
-    def __init__(self, outlet_oids: dict[str: str], version: int,
+    def __init__(self, outlet_oids: dict[str: str], version: int, # pylint: disable=too-many-arguments
                  read_auth: CommunityData | UsmUserData,
                  write_auth: CommunityData | UsmUserData,
                  ip_address: str, port: int):
@@ -94,7 +98,7 @@ class TransportSnmpV1V2(TransportSnmp):
     Class representing the use of SNMP v1 or v2 as transport
     """
 
-    def __init__(self, outlet_oids: dict[str: any], version: int,
+    def __init__(self, outlet_oids: dict[str: any], version: int, # pylint: disable=too-many-arguments
                  ip_address: str, port: int,
                  public_community: str, private_community: str):
         """
@@ -123,7 +127,7 @@ class TransportSnmpV3(TransportSnmp):
     class representing the use of SNMP v3 as transport
     """
 
-    def __init__(self, outlet_oids: dict[str: str], version: int,
+    def __init__(self, outlet_oids: dict[str: str], version: int, # pylint: disable=too-many-arguments
                  ip_address: str, port: int,
                  user: str, auth_protocol: str, auth_passphrase: str,
                  priv_protocol: str, priv_passphrase: str,

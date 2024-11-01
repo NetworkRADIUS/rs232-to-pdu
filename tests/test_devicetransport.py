@@ -1,14 +1,17 @@
+# pylint: disable=missing-module-docstring
 import asyncio
 import unittest
 from unittest import mock
 
 
-from rs232_to_tripplite.device import Device
-from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
-    TransportSnmpV3
+from rs232_to_tripplite.device import Device # pylint: disable=import-error
+from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, TransportSnmpV3 # pylint: disable=import-error, line-too-long
 
 
 class TestSnmpTransport(unittest.TestCase):
+    """
+    Unit tests for the Snmp Transport classes
+    """
     @classmethod
     def setUpClass(cls):
         cls.v1v2_transport = TransportSnmpV1V2(
@@ -31,9 +34,17 @@ class TestSnmpTransport(unittest.TestCase):
         cls.event_loop = asyncio.new_event_loop()
 
     @mock.patch("pysnmp.hlapi.asyncio.getCmd")
-    def test_get_outlet_state(self, mock_getCmd):
+    def test_get_outlet_state(self, mock_get_cmd):
+        """
+        tests getting outlet states
+        Args:
+            mock_get_cmd: mocking pysnmp.getCmd
+
+        Returns:
+
+        """
         # Mock successful command
-        mock_getCmd.return_value = (None, None, None, None)
+        mock_get_cmd.return_value = (None, None, None, None)
 
         self.assertEqual(
             asyncio.run(self.v1v2_device.get_outlet_state('001')),
@@ -51,7 +62,7 @@ class TestSnmpTransport(unittest.TestCase):
         )
 
         # Mock SNMP engine error
-        mock_getCmd.return_value = (True, None, None, None)
+        mock_get_cmd.return_value = (True, None, None, None)
         self.assertEqual(
             asyncio.run(self.v1v2_device.get_outlet_state('001')),
             (False, (True, None, None, None))
@@ -68,7 +79,7 @@ class TestSnmpTransport(unittest.TestCase):
         )
 
         # Mock SNMP PDU error
-        mock_getCmd.return_value = (None, True, None, None)
+        mock_get_cmd.return_value = (None, True, None, None)
         self.assertEqual(
             asyncio.run(self.v1v2_device.get_outlet_state('001')),
             (False, (None, True, None, None))
@@ -85,9 +96,17 @@ class TestSnmpTransport(unittest.TestCase):
         )
 
     @mock.patch("pysnmp.hlapi.asyncio.setCmd")
-    def test_set_outlet_state(self, mock_setCmd):
+    def test_set_outlet_state(self, mock_set_cmd):
+        """
+        tests setting outlet states
+        Args:
+            mock_set_cmd: mocking pysnmp.setCmd
+
+        Returns:
+
+        """
         # Mock successful command
-        mock_setCmd.return_value = (None, None, None, None)
+        mock_set_cmd.return_value = (None, None, None, None)
 
         self.assertEqual(
             asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
@@ -105,7 +124,7 @@ class TestSnmpTransport(unittest.TestCase):
         )
 
         # Mock SNMP engine error
-        mock_setCmd.return_value = (True, None, None, None)
+        mock_set_cmd.return_value = (True, None, None, None)
         self.assertEqual(
             asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
             (False, (True, None, None, None))
@@ -122,7 +141,7 @@ class TestSnmpTransport(unittest.TestCase):
         )
 
         # Mock SNMP PDU error
-        mock_setCmd.return_value = (None, True, None, None)
+        mock_set_cmd.return_value = (None, True, None, None)
         self.assertEqual(
             asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
             (False, (None, True, None, None))
@@ -137,4 +156,3 @@ class TestSnmpTransport(unittest.TestCase):
             KeyError,
             asyncio.run, self.v1v2_device.set_outlet_state('004', 'on')
         )
-

@@ -84,10 +84,13 @@ class DeviceCmdRunner:
             # retrieve next item from queue and run the command
             # Will not grab next item until the previous command has been
             # completed
-            priority, device_cmd = await self.queue.get()
+            _, device_cmd = await self.queue.get()
             await device_cmd.send_command()
 
 class LookForFileEH(FileSystemEventHandler):
+    """
+    Event Handler to perform callback if desired file is created
+    """
     def __init__(self, file_to_watch, callback: Callable) -> None:
         self.file_to_watch = file_to_watch
         self.callback_when_found = callback
@@ -96,8 +99,12 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file_to_watch:
             self.callback_when_found()
 
-class Rs2323ToTripplite:
-    def __init__(
+class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
+    """
+    Command converter that takes in rs232 input and create/sends device
+    commands
+    """
+    def __init__( # pylint: disable=too-many-arguments
             self,
             serial_device: str, serial_timeout: int,
             max_attempts: int, delay: int, cmd_timeout: int,
@@ -175,17 +182,29 @@ class Rs2323ToTripplite:
             logger.warning(f'Serial device {self.serial_device} is not open')
             self.sysdwd.status('Serial port is not open')
             return False
-        except SerialException as e:
+        except SerialException:
             logger.error(f'Failed to open serial device {self.serial_device}')
             self.sysdwd.status('Failed to open serial device')
             return False
 
     def close_connection(self):
+        """
+        Closes the serial port connection
+
+        Returns:
+
+        """
         self.sysdwd.status('Closing serial port')
         self.serial_conn.close()
         self.sysdwd.status('Serial port closed')
 
     def attempt_reconnect(self):
+        """
+        Attempts to reconnect the serial port
+
+        Returns:
+
+        """
         time.sleep(0.5)
         if self.make_connection():
             self.event_loop.add_reader(self.serial_conn.ser,
@@ -194,27 +213,35 @@ class Rs2323ToTripplite:
             self.file_watchdog.stop()
 
     def serial_error_handler(self, loop, context):
-        match type(context['exception']):
-            case OSError:
-                loop.remove_reader(self.serial_conn.ser)
-                self.close_connection()
+        """
+        Error handler for serial connections
+        Args:
+            loop: event loop
+            context: error context
 
-                self.jobs['reconnect'] = self.scheduler.add_job(
-                    self.attempt_reconnect, 'interval', seconds=5
-                )
+        Returns:
 
-                watch_path = '/'.join(
-                    self.serial_device.split('/')[:-1]
-                )
-                self.file_watchdog = Observer()
-                self.file_watchdog.schedule(
-                    LookForFileEH(self.serial_device,
-                                  self.attempt_reconnect
-                                  ),
-                    watch_path
-                )
-                self.file_watchdog.start()
-                self.file_watchdog.join()
+        """
+        if isinstance(OSError, context['exception']):
+            loop.remove_reader(self.serial_conn.ser)
+            self.close_connection()
+
+            self.jobs['reconnect'] = self.scheduler.add_job(
+                self.attempt_reconnect, 'interval', seconds=5
+            )
+
+            watch_path = '/'.join(
+                self.serial_device.split('/')[:-1]
+            )
+            self.file_watchdog = Observer()
+            self.file_watchdog.schedule(
+                LookForFileEH(self.serial_device,
+                              self.attempt_reconnect
+                              ),
+                watch_path
+            )
+            self.file_watchdog.start()
+            self.file_watchdog.join()
 
     def add_healthcheck_to_queue(self) -> None:
         """
@@ -223,14 +250,14 @@ class Rs2323ToTripplite:
         Returns:
 
         """
-        for device_name in self.devices:
+        for _, device in self.devices.items():
             self.cmd_counter += 1
             self.event_loop.create_task(
                 self.device_cmd_runner.put_into_queue(
                     GetCommandWithRetry(
-                        self.devices[device_name],
+                        device,
                         # always check the first outlet
-                        self.devices[device_name].outlets[0],
+                        device.outlets[0],
                         self.retry['timeout'], 1, 0,
                         self.cmd_counter
                     ), True
@@ -329,6 +356,14 @@ class Rs2323ToTripplite:
         del self.read_buffer[:curr_seq_start_pos]
 
     def parse_buffer(self, buffer):
+        """
+        Parses \r terminated section of buffer
+        Args:
+            buffer: section of serial buffer
+
+        Returns:
+
+        """
         # If the \r char is encountered, attempt to parse sequence
         try:
             logger.debug((f'Received command sequence: "'
@@ -349,6 +384,14 @@ class Rs2323ToTripplite:
             self.consume_parsed_tokens(parsed_tokens)
 
     def consume_parsed_tokens(self, tokens):
+        """
+        Consumes parsed tokens to act accordingly
+        Args:
+            tokens: parsed token
+
+        Returns:
+
+        """
         if tokens[0] in ['quit', '']:
             logger.info('Quit or empty sequence detected')
 

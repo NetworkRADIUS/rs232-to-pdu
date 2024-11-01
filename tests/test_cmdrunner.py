@@ -1,19 +1,33 @@
+"""
+Contains tests for the DeviceCmdRunner class
+"""
+
 import unittest
 import asyncio
-from unittest import mock
 
-from rs232_to_tripplite.commands.base import BaseDeviceCommand
-from rs232_to_tripplite.rs232tripplite import DeviceCmdRunner
+from rs232_to_tripplite.commands.base import BaseDeviceCommand # pylint: disable=import-error
+from rs232_to_tripplite.rs232tripplite import DeviceCmdRunner # pylint: disable=import-error
 
 
 async def dummy_sleep(timeout):
+    """
+    Helper func to use async sleep
+    Args:
+        timeout: timeout in seconds
+
+    Returns:
+
+    """
     await asyncio.sleep(timeout)
 
-class DummyCmd(BaseDeviceCommand):
-    async def _invoke_device_command(self) -> tuple[bool, any]:
+class DummyCmd(BaseDeviceCommand): # pylint: disable=too-few-public-methods
+    """
+    Empty concrete subclass of the BaseDeviceCommand class
+    """
+    async def _invoke_device_command(self) -> tuple[bool, any]: # pylint: disable=missing-function-docstring, line-too-long
         return True, None
 
-    async def send_command(self):
+    async def send_command(self): # pylint: disable=missing-function-docstring
         return None
 
 
@@ -48,7 +62,7 @@ class TestCmdRunner(unittest.TestCase):
 
         # assert that queue size has increased by exactly 1
         self.assertEqual(self.cmd_runner.queue.qsize(), pre_queue_size + 1)
-    
+
     def test_add_high_prio_to_queue(self):
         """
         Test case to ensure that high priority items are run first
@@ -57,15 +71,21 @@ class TestCmdRunner(unittest.TestCase):
         low_prio_dummy_cmd = DummyCmd(None, '', 2)
 
         # place low priority item first
-        self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False))
-        self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True))
+        self.event_loop.run_until_complete(
+            self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False)
+        )
+        self.event_loop.run_until_complete(
+            self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True)
+        )
 
         # .get() returns (priority, item), thus the [1] at the end
-        next_cmd_in_queue = self.event_loop.run_until_complete(self.cmd_runner.queue.get())[1]
+        next_cmd_in_queue = self.event_loop.run_until_complete(
+            self.cmd_runner.queue.get()
+        )[1]
 
         # assert that the item we got was the high priority item
         self.assertIs(next_cmd_in_queue, high_prio_dummy_cmd)
-    
+
     def test_add_low_prio_to_queue(self):
         """
         Test case to ensure that low priority items are not run first
@@ -74,10 +94,16 @@ class TestCmdRunner(unittest.TestCase):
         low_prio_dummy_cmd = DummyCmd(None, '', 2)
 
         # place high priority item first
-        self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True))
-        self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False))
+        self.event_loop.run_until_complete(
+            self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True)
+        )
+        self.event_loop.run_until_complete(
+            self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False)
+        )
 
-        next_cmd_in_queue = self.event_loop.run_until_complete(self.cmd_runner.queue.get())[1]
+        next_cmd_in_queue = self.event_loop.run_until_complete(
+            self.cmd_runner.queue.get()
+        )[1]
 
         # assert that the item we got was not the low priority item
         self.assertIsNot(next_cmd_in_queue, low_prio_dummy_cmd)
@@ -91,10 +117,14 @@ class TestCmdRunner(unittest.TestCase):
         dummy_cmd = DummyCmd(None, '', 1)
 
         # begin listening for new items in queue
-        self.event_loop.create_task(self.cmd_runner.queue_processor(self.event_loop))
+        self.event_loop.create_task(
+            self.cmd_runner.queue_processor(self.event_loop)
+        )
 
         # put new item into queue
-        self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(dummy_cmd))
+        self.event_loop.run_until_complete(
+            self.cmd_runner.put_into_queue(dummy_cmd)
+        )
 
         self.event_loop.run_until_complete(dummy_sleep(5))
 

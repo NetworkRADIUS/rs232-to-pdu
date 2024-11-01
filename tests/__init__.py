@@ -1,3 +1,6 @@
+"""
+code to allow imports from src
+"""
 import os
 import sys
 PROJECT_PATH = os.getcwd()

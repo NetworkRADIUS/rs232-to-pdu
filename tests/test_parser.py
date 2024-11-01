@@ -1,7 +1,8 @@
+# pylint: disable=missing-module-docstring
 import unittest
 
-from rs232_to_tripplite.parsers.base import ParseError
-from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
+from rs232_to_tripplite.parsers.base import ParseError # pylint: disable=import-error
+from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence # pylint: disable=import-error
 
 
 class TestKvmParser(unittest.TestCase):
@@ -16,7 +17,7 @@ class TestKvmParser(unittest.TestCase):
         """
         cls.parser = ParserKvmSequence()
 
-    def test_parser_sequences(self):
+    def test_parser_sequences(self):  # pylint: disable=missing-function-docstring
         self.assertEqual(self.parser.parse('on 1 1\r'), ('on', 1, 1))
         self.assertEqual(self.parser.parse('of 1 1\r'), ('of', 1, 1))
         self.assertEqual(self.parser.parse('cy 1 1\r'), ('cy', 1, 1))

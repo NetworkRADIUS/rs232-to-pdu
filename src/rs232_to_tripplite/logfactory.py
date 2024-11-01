@@ -12,6 +12,9 @@ from typing import Callable
 
 
 class ReprFormatter(logging.Formatter):
+    """
+    Custom formatter to escape all characters to string representation
+    """
     def format(self, record):
         record.msg = repr(record.msg)
         return super().format(record)

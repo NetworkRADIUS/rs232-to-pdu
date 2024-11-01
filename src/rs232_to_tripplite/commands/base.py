@@ -1,9 +1,13 @@
+"""
+Contains a device command, which includes a device and outlet to interact with
+"""
+
 from abc import ABC, abstractmethod
 
 from rs232_to_tripplite.device import Device
 
 
-class BaseDeviceCommand(ABC):
+class BaseDeviceCommand(ABC): # pylint: disable=too-few-public-methods
     """
     Abstract class to represent a device command sender
     """
@@ -29,14 +33,12 @@ class BaseDeviceCommand(ABC):
         Returns:
             success, outlet state
         """
-        ...
 
     @abstractmethod
-    def send_command(self):
+    async def send_command(self):
         """
         Outward facing interface to run command
 
         Returns:
 
         """
-        ...

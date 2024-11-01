@@ -1,3 +1,9 @@
+"""
+Contains Device class meant to model a target device.
+
+Each device must have a name, a list of outlets, and a transport method
+"""
+
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3

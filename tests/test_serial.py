@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring
 import unittest
 import asyncio
 import subprocess
@@ -18,12 +19,16 @@ class TestSerialConn(unittest.TestCase):
         """
         Creates the connector and event loop objects and connects to the port
         """
-        cls.socat = subprocess.Popen(['socat', '-d', '-d', '-T', '60', 'pty,raw,echo=0,link=./ttyUSBCI0', 'pty,raw,echo=0,link=./ttyUSBCI1'])
+        cls.socat = subprocess.Popen( # pylint: disable=consider-using-with
+            ['socat', '-d', '-d', '-T', '60',
+             'pty,raw,echo=0,link=./ttyUSBCI0',
+             'pty,raw,echo=0,link=./ttyUSBCI1']
+        )
 
         time.sleep(1)
 
-        cls.ser_conn_rd = serial.Serial('./ttyUSBCI0', timeout=10, xonxoff=True)
-        cls.ser_conn_wr = serial.Serial('./ttyUSBCI1', timeout=10, xonxoff=True)
+        cls.ser_conn_rd = serial.Serial('./ttyUSBCI0', xonxoff=True)
+        cls.ser_conn_wr = serial.Serial('./ttyUSBCI1', xonxoff=True)
         cls.event_loop = asyncio.new_event_loop()
         cls.changed = False
 

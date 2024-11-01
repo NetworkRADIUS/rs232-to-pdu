@@ -1,3 +1,7 @@
+"""
+Test cases for the Rs232ToTripplite class
+"""
+
 import os
 import signal
 import subprocess
@@ -7,13 +11,21 @@ from unittest import mock
 
 import serial
 
-from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite
+from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite # pylint: disable=import-error
 
 
 class TestCoverter(unittest.TestCase):
+    """
+    Test cases for the Rs232ToTripplite class
+    """
     @classmethod
     def setUpClass(cls):
-        cls.socat = subprocess.Popen(['socat', '-d', '-d', '-T', '60', 'pty,raw,echo=0,link=./ttyUSBCI0', 'pty,raw,echo=0,link=./ttyUSBCI1'])
+        cls.socat = subprocess.Popen(  # pylint: disable=consider-using-with
+            ['socat', '-d', '-d', '-T', '60',
+             'pty,raw,echo=0,link=./ttyUSBCI0',
+             'pty,raw,echo=0,link=./ttyUSBCI1'
+             ]
+        )
 
         # need to give socat a few moments to actually start
         time.sleep(1)
@@ -61,6 +73,14 @@ class TestCoverter(unittest.TestCase):
     @mock.patch('rs232_to_tripplite.rs232tripplite.Rs2323ToTripplite.'
                 'add_power_change_to_queue')
     def test_converter_read_parse(self, mock_func):
+        """
+        Tests an end-to-end parsing from the Rs2323ToTripplite class
+        Args:
+            mock_func: mocking add_power_change_to_queue
+
+        Returns:
+
+        """
         self.rs232_wr_dev.write('on 1 1\r'.encode('utf-8'))
         # without sleep, by time we read, buffer is still empty (race cond)
         time.sleep(1)

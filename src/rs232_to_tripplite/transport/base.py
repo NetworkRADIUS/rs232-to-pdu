@@ -1,3 +1,7 @@
+"""
+Abstract base class for a command transport
+"""
+
 from abc import ABC, abstractmethod
 
 
@@ -25,7 +29,6 @@ class Transport(ABC):
         Returns:
             success bool, state of the outlet
         """
-        ...
 
     @abstractmethod
     async def set_outlet_state(self, outlet: str, state: any) -> tuple[
@@ -39,4 +42,3 @@ class Transport(ABC):
         Returns:
             success bool, state of the outlet after sending request
         """
-        ...
