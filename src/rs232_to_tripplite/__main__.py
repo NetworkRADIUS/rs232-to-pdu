@@ -35,13 +35,6 @@ with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
 nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
-POWERBAR_VALUES = {
-    'on': pysnmp.Integer(2),
-    'of': pysnmp.Integer(1),
-    'cy': pysnmp.Integer(3)
-}
-
-
 class DeviceCmdRunner:
     """
     Class that places commands in a queue and runs them one after another
