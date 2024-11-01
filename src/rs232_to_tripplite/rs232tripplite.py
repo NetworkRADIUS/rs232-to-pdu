@@ -8,7 +8,6 @@ import asyncio
 import time
 from typing import Callable
 
-import pysnmp.hlapi.asyncio as pysnmp
 import serial
 import systemd_watchdog as sysdwd
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -102,7 +101,9 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self,
             serial_device: str, serial_timeout: int,
             max_attempts: int, delay: int, cmd_timeout: int,
-            device_config: dict, healthcheck_frequency: int ):
+            device_config: dict, healthcheck_frequency: int,
+            toggle_delay: int
+    ):
         """
 
         Args:
@@ -113,6 +114,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             cmd_timeout: timeout in seconds for a command
             device_config: dictionary containing config data for devices
             healthcheck_frequency: frequency of a healthcheck
+            toggle_delay: delay between of and on cmds for manual toggle
         """
         # Initialize parser and command issuer
         self.kvm_parser = ParserKvmSequence()
@@ -147,7 +149,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
                 device_name, device_config[device_name]
             )
 
-        self.toggle_delay = config['power_options']['cy_delay']
+        self.toggle_delay = toggle_delay
 
         self.cmd_counter = 0
 
@@ -288,6 +290,15 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         )
 
     async def manual_outlet_toggle(self, device: Device, outlet: str):
+        """
+        Manually toggle the power of an outlet through off and on commands
+        Args:
+            device: device object
+            outlet: outlet to toggle
+
+        Returns:
+
+        """
         logger.info(f'Performing manual power toggle for device {device.name}')
         self.add_power_change_to_queue(device, outlet, 'of')
         await asyncio.sleep(self.toggle_delay)
@@ -404,7 +415,9 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
             if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_options:
                 self.event_loop.create_task(
-                    self.manual_outlet_toggle(self.devices[f'{int(device):03d}'], f'{int(outlet):03d}')
+                    self.manual_outlet_toggle(
+                        self.devices[f'{int(device):03d}'],
+                        f'{int(outlet):03d}')
                 )
             else:
                 self.add_power_change_to_queue(

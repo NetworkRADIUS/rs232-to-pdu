@@ -1,10 +1,13 @@
-import yaml
-
+# pylint: disable=missing-module-docstring
 import unittest
-from rs232_to_tripplite.device import create_device_from_config_dict, Device
+
+from rs232_to_tripplite.device import create_device_from_config_dict, Device # pylint: disable=import-error
 
 
 class TestPowerOptions(unittest.TestCase):
+    """
+    Test cases pertaining to power options
+    """
     def setUp(self):
         self.device_config = {
             'snmp': {
@@ -22,6 +25,11 @@ class TestPowerOptions(unittest.TestCase):
         }
 
     def test_device_instantiation(self):
+        """
+        Tests instantiation of a device with various power options
+        Returns:
+
+        """
         self.device_config['power_options'] = {'of':1, 'on':2, 'cy':3}
         self.assertIsInstance(
             create_device_from_config_dict('int_all', self.device_config),

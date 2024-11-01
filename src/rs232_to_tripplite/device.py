@@ -4,11 +4,12 @@ Contains Device class meant to model a target device.
 Each device must have a name, a list of outlets, and a transport method
 """
 
+import pysnmp.hlapi.asyncio as pysnmp
+
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3
 
-import pysnmp.hlapi.asyncio as pysnmp
 
 class Device:
     """
@@ -63,7 +64,7 @@ class Device:
                                                      self.power_options[state])
 
 
-def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
+def create_device_from_config_dict(name: str, config_dict: dict) -> Device: # pylint: disable=too-many-locals
     """
     Factory function for creating a Device instance from a config dict
 
