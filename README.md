@@ -69,6 +69,34 @@ When using SNMP v3, the user may also choose what security level they desire. Th
 
 ---
 
+## Logging
+
+This tool supports logging to three destination types: file, syslog, and streams. However, only one type and destination
+is expected. That is, this tool expects to log to exactly one location.
+
+To configure the log destination, one of `file`, `syslog`, or `stream` must be a key under `log`. The value to this
+key is the log destination.
+
+Below are sample configurations.
+
+```yaml
+config.yaml
+
+# Sample 1 : logging to file
+log:
+  file: destination.log
+
+# Sample 2 : logging to syslog
+log:
+  syslog: /var/run/syslog
+
+# Sample 3: logging to stream
+log:
+  stream: stdout
+```
+
+---
+
 ## Device Templates
 
 To use a template, `devices.<id>.outlets` should contain the name of the template (as a string).
@@ -130,6 +158,9 @@ devices:
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
 conform the yaml format and have the following sections.
 
+```log```:\
+\- ```file``` | ```syslog``` | ```stream```: logging destination as a string
+
 ```serial```:\
 \- ```device```: string value of serial port tty file\
 \- ```timeout```: time in seconds before timing out serial connection
@@ -176,6 +207,9 @@ conform the yaml format and have the following sections.
 ### Sample Config
 
 ```
+log:
+  file: {{ log_destination }}
+
 serial:
   device: {{ device }}
   timeout: 0
