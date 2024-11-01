@@ -35,12 +35,6 @@ with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
 nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
-POWERBAR_VALUES = {
-    'on': pysnmp.Integer(2),
-    'of': pysnmp.Integer(1),
-    'cy': pysnmp.Integer(3)
-}
-
 
 class DeviceCmdRunner:
     """
@@ -446,5 +440,5 @@ class SerialListener:
             else:
                 self.add_power_change_to_queue(
                     self.devices[f'{int(device):03d}'],
-                    f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+                    f'{int(outlet):03d}', cmd
                 )
