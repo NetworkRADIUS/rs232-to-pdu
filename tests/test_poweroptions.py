@@ -1,9 +1,9 @@
+# pylint: disable=missing-module-docstring
 import yaml
 
-#pylint: disable=missing-module-docstring
-
 import unittest
-from rs232_to_tripplite.device import create_device_from_config_dict, Device
+
+from rs232_to_tripplite.device import create_device_from_config_dict, Device # pylint: disable=import-error
 
 from rs232_to_tripplite.device import FactoryDevice  # pylint: disable=import-error
 from rs232_to_tripplite.transport.base import Transport  # pylint: disable=import-error
@@ -110,7 +110,12 @@ class TestDevice(unittest.TestCase):
         self.assertFalse(func('a_b_'))
         self.assertFalse(func('_a_b'))
 
-    def test_device_instantiation(self):
+    def test_power_states(self):
+        """
+        Tests instantiation of a device with various power options
+        Returns:
+
+        """
         self.device_config['power_options'] = {'of':1, 'on':2, 'cy':3}
         self.assertIsInstance(
             create_device_from_config_dict('int_all', self.device_config),

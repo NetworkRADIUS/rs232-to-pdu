@@ -10,6 +10,7 @@ import unittest
 from unittest import mock
 
 import serial
+import pysnmp.hlapi.asyncio as pysnmp
 
 from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite # pylint: disable=import-error
 
@@ -61,9 +62,14 @@ class TestCoverter(unittest.TestCase):
                     'outlets': {
                         '001': '1.1',
                         '002': '1.2'
+                    },
+                    'power_options': {
+                        'on': pysnmp.Integer(2),
+                        'of': pysnmp.Integer(1),
+                        'cy': pysnmp.Integer(3),
                     }
                 }
-            }, 10
+            }, 10, 5
         )
         self.converter.make_connection()
 
