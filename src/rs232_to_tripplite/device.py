@@ -79,6 +79,8 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
 
     power_options = config_dict['power_options']
     for option, value in power_options.items():
+        if not isinstance(option, str):
+            raise TypeError('Power option must be a string')
         power_options[option] = pysnmp.Integer(value)
 
     if 'snmp' in config_dict:
