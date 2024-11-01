@@ -5,14 +5,12 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import asyncio
-import pathlib
 import time
 from typing import Callable
 
 import pysnmp.hlapi.asyncio as pysnmp
 import serial
 import systemd_watchdog as sysdwd
-import yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
@@ -25,11 +23,6 @@ from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
 from rs232_to_tripplite.device import create_device_from_config_dict, Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
-
-# Read and setup configs
-CONFIG_FILE = pathlib.Path('config.yaml')
-with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
-    config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
 # Set up logger for this module
 nrlogfac.setup_logging()
@@ -202,14 +195,28 @@ class SerialConnection:
 
 
 class SerialListener:
-    """
-    Listen for serial messages and convert into SNMP commands
-    """
+    def __init__(
+            self,
+            serial_device: str, serial_timeout: int,
+            snmp_max_attempts: int, snmp_delay: int, snmp_timeout: int,
+            device_config: dict, healthcheck_frequency: int ):
+        """
 
-    def __init__(self):
+        Args:
+            serial_device: path to serial device
+            serial_timeout: timeout in seconds for connecting to serial device
+            snmp_max_attempts: maximum number of attempts for an SNMP command
+            snmp_delay: delay between SNMP retries
+            snmp_timeout: timeout in seconds for an SNMP command
+            device_config: dictionary containing config data for devices
+            healthcheck_frequency: frequency of an SNMP healthcheck
+        """
         # Initialize parser and snmp command issuer
         self.kvm_parser = ParserKvmSequence()
         self.device_cmd_runner = DeviceCmdRunner()
+
+        self.serial_device = serial_device
+        self.serial_timeout = serial_timeout
 
         self.event_loop = asyncio.new_event_loop()
         self.scheduler = ListenerScheduler(self.event_loop)
@@ -218,19 +225,21 @@ class SerialListener:
         # Create serial connection
         self.serial_conn = SerialConnection()
 
+        self.healthcheck_frequency = healthcheck_frequency
+
         # Initialization of other variables to be used in class
         self.read_buffer = []
 
         self.retry = {
-            'max_attempts': int(config['snmp']['retry']['max_attempts']),
-            'delay': int(config['snmp']['retry']['delay']),
-            'timeout': int(config['snmp']['retry']['timeout'])
+            'max_attempts': snmp_max_attempts,
+            'delay': snmp_delay,
+            'timeout': snmp_timeout
         }
 
         self.devices: dict[str: Device] = {}
-        for device_name in config['devices'].keys():
+        for device_name in device_config.keys():
             self.devices[device_name] = create_device_from_config_dict(
-                device_name, config['devices'][device_name]
+                device_name, device_config[device_name]
             )
 
         self.cmd_counter = 0
@@ -250,8 +259,8 @@ class SerialListener:
         self.sysdwd.status('Opening serial port')
 
         # Makes the connection
-        serial_port = config['serial']['device']
-        serial_timeout = int(config['serial']['timeout'])
+        serial_port = self.serial_device
+        serial_timeout = self.serial_timeout
         if self.serial_conn.make_connection(serial_port,
                                             timeout=serial_timeout):
             self.sysdwd.status('Serial port successfully opened')
@@ -281,11 +290,11 @@ class SerialListener:
                 self.scheduler.start_reconnect_job(self.attempt_reconnect)
 
                 watch_path = '/'.join(
-                    config['serial']['device'].split('/')[:-1]
+                    self.serial_device.split('/')[:-1]
                 )
                 self.file_watchdog = Observer()
                 self.file_watchdog.schedule(
-                    LookForFileEH(config['serial']['device'],
+                    LookForFileEH(self.serial_device,
                                   self.attempt_reconnect
                                   ),
                     watch_path
@@ -353,7 +362,7 @@ class SerialListener:
         self.sysdwd.status('Initiating application')
 
         while not self.make_connection():
-            time.sleep(config['serial']['timeout'])
+            time.sleep(self.serial_timeout)
 
         self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
 
@@ -363,7 +372,7 @@ class SerialListener:
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
         self.scheduler.start_healthcheck_job(
-            self.add_healthcheck_to_queue, config['healthcheck']['frequency']
+            self.add_healthcheck_to_queue, self.healthcheck_frequency
         )
         self.scheduler.start_systemd_notify(
             self.sysdwd.notify, self.sysdwd.timeout / 2e6
