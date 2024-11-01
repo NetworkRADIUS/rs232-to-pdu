@@ -32,6 +32,15 @@ Healthcheck frequency are configurable in the `config.yaml` file, under `healthc
 
 ---
 
+## Power Options
+
+For each device, a list of power options (`devices.<id>.power_options`) are expected. At the minimum, a `on` and `of` options must be supplied with
+their corresponding state values. If the device supports it, a `cy` option should also be supplied to perform a power
+toggle (off then on). If no `cy` option is given, but a `cy` command is inputted, the tool with perform a manual toggle,
+involving turning the outlet off, then on, with a configurable delay. This configurable delay is stored under 
+`power_options.cy_delay`. This value is a global and applies to all devices.
+---
+
 ## SNMP Command Buffering
 To prevent the SNMP agent from being overwhelmed by commands, this tool will not send a command to the SNMP agent until 
 a response for the previous command has been received. As such, all queued commands will be stored in a priority 
@@ -140,6 +149,9 @@ conform the yaml format and have the following sections.
 &emsp;&emsp;&emsp;&emsp;\- ```<port numbers>*```: string value of OID for this port
 &emsp;&emsp;&emsp;\- ```path```: contains path where template files are stored
 
+```power_options```:\
+\- ```cy_delay```: time in seconds between off and on commands
+
 ```banks```:\
 \- ```<bank number>*```\
 &emsp; \- ```snmp```:\
@@ -157,6 +169,10 @@ conform the yaml format and have the following sections.
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
 &emsp; \- ```outlets```:\
 &emsp;&emsp; \- ```<port number>*```: string value of OID for this port
+&emsp; \- ```power_options```:\
+&emsp;&emsp; \- ```'on'```: value for on state\
+&emsp;&emsp; \- ```'of'```: value for on state\
+&emsp;&emsp; \- ```'cy'```: value for on state
 
 ### Sample Config
 
@@ -167,6 +183,9 @@ serial:
 
 healthcheck:
   frequency: 5
+
+power_options:
+  cy_delay: 5
 
 snmp:
   retry:
@@ -191,6 +210,10 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
+    power_options:
+      on: 1
+      of: 2
+      cy: 3
   '002':
     snmp:
       v2:
@@ -199,6 +222,10 @@ devices:
       ip_address: {{ ip_address }}
       port: {{ port }}
     outlets: dev_foo
+    power_options:
+      on: 1
+      of: 2
+      cy: 3
   '003':
     snmp:
       v3:
@@ -211,4 +238,7 @@ devices:
       ip_address: {{ ip_address }}
       port: {{ port }}
     outlets: dev_bar
+    power_options:
+      on: 1
+      of: 2
 ```
