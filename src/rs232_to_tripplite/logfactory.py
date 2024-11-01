@@ -5,10 +5,11 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import logging
-import logging.handlers
 import logging.config
-from typing import Callable
+import logging.handlers
 import sys
+from typing import Callable
+
 
 class ReprFormatter(logging.Formatter):
     def format(self, record):
@@ -28,7 +29,8 @@ def setup_logging() -> None:
     Returns:
         None
     """
-    repr_formatter = ReprFormatter('%(asctime)s - %(name)s - %(levelname)s : At Line %(lineno)s of %(module)s :: %(message)s')
+    repr_formatter = ReprFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s : At Line %(lineno)s of %(module)s :: %(message)s')
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setFormatter(repr_formatter)
@@ -41,11 +43,12 @@ def setup_logging() -> None:
     ser2snmp_logger.setLevel(logging.INFO)
     ser2snmp_logger.addHandler(stdout_handler)
 
+
 def create_logger(
-    name: str,
-    level: int = logging.INFO,
-    propagation: bool = True,
-    log_filter: Callable = None,
+        name: str,
+        level: int = logging.INFO,
+        propagation: bool = True,
+        log_filter: Callable = None,
 ) -> logging.Logger:
     """
     Creates a simpel logger

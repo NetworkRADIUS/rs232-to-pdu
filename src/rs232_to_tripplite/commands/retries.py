@@ -1,61 +1,14 @@
-"""
-Base class for a Device Command sender.
-
-We wrap sending a device command inside a class so that we can have a queue/list
-of Child classes. This way, we have a unified way of invoking commands
-while still being able to customize aspects such as logging
-
-Author: Patrick Guo
-Date: 2024-08-28
-"""
 import asyncio
 from abc import ABC, abstractmethod
 
-from rs232_to_tripplite.device import Device
 import rs232_to_tripplite.logfactory as nrlogfac
+from rs232_to_tripplite.commands.base import BaseDeviceCommand
+from rs232_to_tripplite.device import Device
 
 logger = nrlogfac.create_logger(__name__)
 
 
-class BaseDeviceCommand(ABC):
-    """
-    Abstract class to represent a device command sender
-    """
-    def __init__(self, device: Device, outlet: str, _id: int):
-        """
-
-        Args:
-            device: Device object to interact with
-            outlet: string representation of outlet
-            _id: command number (UUID)
-        """
-        self.device = device
-        self.outlet = outlet
-
-        self._id = _id
-
-    @abstractmethod
-    async def _invoke_device_command(self):
-        """
-        Protected method to invoke the device's command
-
-        Returns:
-
-        """
-        ...
-
-    @abstractmethod
-    def send_command(self):
-        """
-        Outward facing interface to run command
-
-        Returns:
-
-        """
-        ...
-
-
-class UdpCommand(BaseDeviceCommand, ABC):
+class CommandWithRetry(BaseDeviceCommand, ABC):
     """
     class representing a command used on UDP, which is unreliable and may want
     to use retries
@@ -94,6 +47,7 @@ class UdpCommand(BaseDeviceCommand, ABC):
 
                 if success:
                     self.cmd_success_handler(result)
+                    return True
                 else:
                     self.cmd_failure_handler(result)
 
@@ -101,6 +55,7 @@ class UdpCommand(BaseDeviceCommand, ABC):
                 self.cmd_timeout_handler()
 
         self.max_attempts_reached_handler()
+        return False
 
     @abstractmethod
     def cmd_success_handler(self, result):
@@ -118,13 +73,15 @@ class UdpCommand(BaseDeviceCommand, ABC):
     def max_attempts_reached_handler(self):
         ...
 
-class UdpGetOutletCommand(UdpCommand):
+
+class GetCommandWithRetry(CommandWithRetry):
     """
     class representing a UDP command that is retrieving the state of an outlet
     """
+
     def __init__(self,
                  device: Device, outlet: str,
-                 timeout: int, max_attempts:int, delay: int,
+                 timeout: int, max_attempts: int, delay: int,
                  _id: int):
         """
 
@@ -138,13 +95,12 @@ class UdpGetOutletCommand(UdpCommand):
         """
         super().__init__(device, outlet, timeout, max_attempts, delay, _id)
 
-    async def _invoke_device_command(self):
-        self.device.get_outlet_state(self.outlet)
+    async def _invoke_device_command(self) -> tuple[bool, any]:
+        return await self.device.get_outlet_state(self.outlet)
 
     def cmd_success_handler(self, result):
-        logger.error(f'Command #{self._id} passed when sending GET command to '
-                     f'outlet {self.outlet} on device {self.device.name}. '
-                     f'Command results: {result}')
+        logger.info(f'Command #{self._id} passed when sending GET command to '
+                    f'outlet {self.outlet} on device {self.device.name}.')
 
     def cmd_failure_handler(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send GET'
@@ -161,13 +117,15 @@ class UdpGetOutletCommand(UdpCommand):
                      f'retries when attempting to send GET command to outlet '
                      f'{self.outlet} on device {self.device.name}.')
 
-class UdpSetOutletCommand(UdpCommand):
+
+class SetCommandWithRetry(CommandWithRetry):
     """
     class representing a UDP command that is setting the state of an outlet
     """
+
     def __init__(self,
                  device: Device, outlet: str, state: any,
-                 timeout: int, max_attempts:int, delay: int,
+                 timeout: int, max_attempts: int, delay: int,
                  _id: int):
         """
 
@@ -184,13 +142,13 @@ class UdpSetOutletCommand(UdpCommand):
 
         self.state = state
 
-    async def _invoke_device_command(self):
-        self.device.get_outlet_state(self.outlet)
+    async def _invoke_device_command(self) -> tuple[bool, any]:
+        return await self.device.set_outlet_state(self.outlet, self.state)
 
     def cmd_success_handler(self, result):
-        logger.error(f'Command #{self._id} passed when sending SET command to '
-                     f'outlet {self.outlet} on device {self.device.name} with '
-                     f'state of {self.state}. Command results: {result}')
+        logger.info(f'Command #{self._id} passed when sending SET command to '
+                    f'outlet {self.outlet} on device {self.device.name} with '
+                    f'state of {self.state}.')
 
     def cmd_failure_handler(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send SET'

@@ -6,7 +6,6 @@ Date: 2024-08-13
 """
 import rs232_to_tripplite.logfactory as nrlogfac
 
-
 # Set up logger for this module
 logger = nrlogfac.create_logger(__name__)
 
@@ -15,6 +14,7 @@ class ParseError(Exception):
     """
     An error that occurs when parsing goes unexpected
     """
+
     def __init__(self, text: str, pos: int, msg: str):
         """
         Args:
@@ -34,6 +34,7 @@ class BaseParser:
     """
     Base parser class
     """
+
     def __init__(self):
         self.buffer = ''
         self.cursor_pos = 0
@@ -70,7 +71,7 @@ class BaseParser:
 
             self.cursor_pos += 1
 
-    def keyword(self, *keywords: tuple[str,...],
+    def keyword(self, *keywords: tuple[str, ...],
                 remove_leading_whitespace: bool = True) -> str:
         """
         Looks for matching keywords at current cursor position
@@ -149,7 +150,6 @@ class BaseParser:
         # Update cursor position and return the integer as an int (rather than
         # a list of chars)
         return int(self.buffer[init_pos:self.cursor_pos])
-
 
     def search_uint8(self) -> int:
         """

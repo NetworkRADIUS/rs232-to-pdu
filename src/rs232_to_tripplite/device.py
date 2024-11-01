@@ -1,11 +1,13 @@
 from rs232_to_tripplite.transport.base import Transport
-from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, TransportSnmpV3
+from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
+    TransportSnmpV3
 
 
 class Device:
     """
     Class representing a Device with controllable outlets
     """
+
     def __init__(
             self,
             name: str, outlets: list[str], transport: Transport
@@ -21,7 +23,7 @@ class Device:
         self.outlets = outlets
         self.transport = transport
 
-    def get_outlet_state(self, outlet: str) -> any:
+    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
         """
         method for retrieving an outlet's state using the transport
         Args:
@@ -30,9 +32,10 @@ class Device:
         Returns:
             outlet state
         """
-        return self.transport.get_outlet_state(outlet)
+        return await self.transport.get_outlet_state(outlet)
 
-    def set_outlet_state(self, outlet: str, state: any) -> any:
+    async def set_outlet_state(self, outlet: str, state: any) -> tuple[
+        bool, any]:
         """
         method for setting an outlet's state using the transport'
         Args:
@@ -42,7 +45,8 @@ class Device:
         Returns:
             outlet state after sending the request
         """
-        self.transport.set_outlet_state(outlet, state)
+        return await self.transport.set_outlet_state(outlet, state)
+
 
 def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
     """
@@ -112,4 +116,4 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
         # raise error if transport is not supported
         raise TypeError(f'Unsupported transport for device {name}')
 
-    return Device(name, outlets.keys(), transport)
+    return Device(name, list(outlets.keys()), transport)

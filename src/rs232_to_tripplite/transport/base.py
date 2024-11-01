@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 
-import pysnmp.hlapi.asyncio as pysnmp
-from pysnmp.hlapi.asyncio import UsmUserData, CommunityData
-
 
 class Transport(ABC):
     """
     Abstract class representing a method of transporting outlet state changes
     or retrievals
     """
+
     def __init__(self, outlets: list[str]):
         """
 
@@ -18,19 +16,20 @@ class Transport(ABC):
         self.outlets = outlets
 
     @abstractmethod
-    async def get_outlet_state(self, outlet: str) -> any:
+    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
         """
         Abstract method for retrieving the state of an outlet
         Args:
             outlet: string representation of the outlet
 
         Returns:
-            state of the outlet
+            success bool, state of the outlet
         """
         ...
 
     @abstractmethod
-    async def set_outlet_state(self, outlet: str, state: any) -> any:
+    async def set_outlet_state(self, outlet: str, state: any) -> tuple[
+        bool, any]:
         """
         Abstract method for setting the state of an outlet
         Args:
@@ -38,9 +37,6 @@ class Transport(ABC):
             state: desired state
 
         Returns:
-            state of the outlet after sending request
+            success bool, state of the outlet after sending request
         """
         ...
-
-
-

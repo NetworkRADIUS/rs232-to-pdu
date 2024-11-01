@@ -1,7 +1,7 @@
+import pysnmp.hlapi.asyncio as pysnmp
 from pysnmp.hlapi.asyncio import CommunityData, UsmUserData
 
 from rs232_to_tripplite.transport.base import Transport
-import pysnmp.hlapi.asyncio as pysnmp
 
 
 class TransportSnmp(Transport):
@@ -9,6 +9,7 @@ class TransportSnmp(Transport):
     Concrete class representing the use of SNMP to send cmds for state changes
     and retrievals
     """
+
     def __init__(self, outlet_oids: dict[str: str], version: int,
                  read_auth: CommunityData | UsmUserData,
                  write_auth: CommunityData | UsmUserData,
@@ -39,7 +40,7 @@ class TransportSnmp(Transport):
         self.session_target = pysnmp.UdpTransportTarget((ip_address, port))
         self.session_context = pysnmp.ContextData()
 
-    async def get_outlet_state(self, outlet: str) -> any:
+    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
         """
         Sends GET command to get outlet state
         Args:
@@ -50,7 +51,7 @@ class TransportSnmp(Transport):
         """
 
         # Uses read-only authentication to perform GET commands
-        results = await pysnmp.getCmd(
+        err_indicator, err_status, err_index, var_binds = await pysnmp.getCmd(
             self.session_engine,
             self.session_read_auth,
             self.session_target,
@@ -58,9 +59,12 @@ class TransportSnmp(Transport):
             pysnmp.ObjectType(self.oids[outlet])
         )
 
-        return results
+        return (not (err_indicator or err_status),
+                (err_indicator, err_status, err_index, var_binds))
 
-    async def set_outlet_state(self, outlet: str, state: any) -> any:
+    async def set_outlet_state(
+            self, outlet: str, state: any
+    ) -> tuple[bool, any]:
         """
         Sends SET command to change outlet state
         Args:
@@ -72,7 +76,7 @@ class TransportSnmp(Transport):
         """
 
         # Uses read-write authentication to perform SET commands
-        results = await pysnmp.setCmd(
+        err_indicator, err_status, err_index, var_binds = await pysnmp.setCmd(
             self.session_engine,
             self.session_write_auth,
             self.session_target,
@@ -81,12 +85,15 @@ class TransportSnmp(Transport):
                               state)
         )
 
-        return results
+        return (not (err_indicator or err_status),
+                (err_indicator, err_status, err_index, var_binds))
+
 
 class TransportSnmpV1V2(TransportSnmp):
     """
     Class representing the use of SNMP v1 or v2 as transport
     """
+
     def __init__(self, outlet_oids: dict[str: any], version: int,
                  ip_address: str, port: int,
                  public_community: str, private_community: str):
@@ -105,15 +112,17 @@ class TransportSnmpV1V2(TransportSnmp):
         super().__init__(
             outlet_oids, version,
             pysnmp.CommunityData(public_community,
-                                 mpModel= 0 if version == 1 else 1),
+                                 mpModel=0 if version == 1 else 1),
             pysnmp.CommunityData(private_community,
-                                 mpModel= 0 if version == 1 else 1),
+                                 mpModel=0 if version == 1 else 1),
             ip_address, port)
+
 
 class TransportSnmpV3(TransportSnmp):
     """
     class representing the use of SNMP v3 as transport
     """
+
     def __init__(self, outlet_oids: dict[str: str], version: int,
                  ip_address: str, port: int,
                  user: str, auth_protocol: str, auth_passphrase: str,
@@ -134,6 +143,14 @@ class TransportSnmpV3(TransportSnmp):
             security_level: security level (authentication and/or privacy)
         """
 
+        # converting protocols from string to pysnmp datatypes
+        match auth_protocol:
+            case 'SHA':
+                auth_protocol = pysnmp.usmHMACSHAAuthProtocol
+        match priv_protocol:
+            case 'AES':
+                priv_protocol = pysnmp.usmAesCfb128Protocol
+
         # perform masking based on security level
         match security_level:
             case 'noAuthNoPriv':
@@ -147,11 +164,11 @@ class TransportSnmpV3(TransportSnmp):
 
         # create user model
         user_auth_obj = pysnmp.UsmUserData(
-                user,
-                authProtocol=auth_protocol,
-                authKey=auth_passphrase,
-                privProtocol=priv_protocol,
-                privKey=priv_passphrase,
+            user,
+            authProtocol=auth_protocol,
+            authKey=auth_passphrase,
+            privProtocol=priv_protocol,
+            privKey=priv_passphrase,
         )
 
         # use user model as both read-only and read-write access

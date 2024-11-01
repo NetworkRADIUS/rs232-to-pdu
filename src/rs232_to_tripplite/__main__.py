@@ -7,39 +7,124 @@ Date: 2024-08-13
 import asyncio
 import pathlib
 import time
-import systemd_watchdog as sysdwd
+from typing import Callable
 
 import pysnmp.hlapi.asyncio as pysnmp
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from typing import Callable
+import serial
+import systemd_watchdog as sysdwd
 import yaml
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from serial.serialutil import SerialException
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 import rs232_to_tripplite.logfactory as nrlogfac
-from rs232_to_tripplite.serialconn import SerialConnection
+from rs232_to_tripplite.commands.base import BaseDeviceCommand
+from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
+                                                 SetCommandWithRetry)
+from rs232_to_tripplite.device import create_device_from_config_dict, Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
-from rs232_to_tripplite.requests.tripplitedevicehealthcheckcmd import TrippliteDeviceHealthcheckCmd
-from rs232_to_tripplite.requests.tripplitedevicepowerchangecmd import TrippliteDevicePowerChangeCmd
-from rs232_to_tripplite.cmdrunner import DeviceCmdRunner
-from rs232_to_tripplite.scheduler import ListenerScheduler
-from rs232_to_tripplite.transport.base import create_device_from_config_dict, Device
 
 # Read and setup configs
-CONFIG_FILE = pathlib.Path('/etc', 'ser2snmp', 'config.yaml')
-with open(CONFIG_FILE, 'r', encoding='utf-8')as fileopen:
+CONFIG_FILE = pathlib.Path('config.yaml')
+with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
     config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
 # Set up logger for this module
 nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
-
 POWERBAR_VALUES = {
     'on': pysnmp.Integer(2),
     'of': pysnmp.Integer(1),
     'cy': pysnmp.Integer(3)
 }
+
+
+class DeviceCmdRunner:
+    """
+    Class that places commands in a queue and runs them one after another
+    """
+
+    def __init__(self) -> None:
+        # Initializes an priority queue with no size limit
+        self.queue = asyncio.PriorityQueue()
+
+        # Initializes the priority counter to 0. To be used when setting
+        # priority of new items
+        self.prio_counter = 0
+
+    async def put_into_queue(self,
+                             device_cmd: BaseDeviceCommand,
+                             high_prio: bool = False) -> None:
+        """
+        Puts an command item into the queue.
+
+        Can set priority to be high or low.
+        New high priority items have highest priority (run first)
+        New low priority items have lowest priority (run last)
+
+        Args:
+            device_cmd (BaseDeviceCmd): command object to be stored in queue
+            high_prio (bool): whether the command should be run first or last
+        """
+        # priority is either positive or negative depending on high/low prio
+        priority = -self.prio_counter if high_prio else self.prio_counter
+        self.prio_counter += 1
+
+        # puts item into queue
+        await self.queue.put((priority, device_cmd))
+
+    async def queue_processor(self, event_loop: asyncio.AbstractEventLoop):
+        """
+        Gets top priority item from queue and runs the command
+
+        Args:
+            event_loop (BaseEventLoop): event loop that is expected to keep
+                                        producing commands
+        """
+
+        # as long as the event loop is running, we should be expecting new
+        # items to be put into the queue
+        while event_loop.is_running():
+            # retrieve next item from queue and run the command
+            # Will not grab next item until the previous command has been
+            # completed
+            priority, device_cmd = await self.queue.get()
+            await device_cmd.send_command()
+
+
+class ListenerScheduler:
+    def __init__(self, event_loop):
+        self.scheduler = AsyncIOScheduler(event_loop=event_loop)
+
+        self.jobs = {}
+
+    def start_healthcheck_job(self, add_hc_to_queue_func, frequency=5):
+        self.jobs['healthcheck'] = self.scheduler.add_job(
+            add_hc_to_queue_func, 'interval', seconds=frequency
+        )
+
+    def start_reconnect_job(self, reconnect_func, frequency=5):
+        self.jobs['reconnect'] = self.scheduler.add_job(
+            reconnect_func, 'interval', seconds=frequency
+        )
+
+    def start_systemd_notify(self, notify_func, frequency):
+        self.jobs['systemd_notify'] = self.scheduler.add_job(
+            notify_func, 'interval', seconds=frequency
+        )
+
+    def remove_reconnect_job(self):
+        self.jobs['reconnect'].remove()
+
+    def start(self):
+        self.scheduler.start()
+
+    def shutdown(self, wait=False):
+        self.scheduler.shutdown(wait)
+
 
 class LookForFileEH(FileSystemEventHandler):
     def __init__(self, file_to_watch, callback: Callable) -> None:
@@ -50,10 +135,77 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file_to_watch:
             self.callback_when_found()
 
+
+class SerialConnection:
+    """
+    Wrapper class for making a serial connection
+    """
+
+    def __init__(self) -> None:
+        self.ser = None
+
+    def make_connection(self,
+                        port: str = None,
+                        baud: int = 9600,
+                        timeout: int = None,
+                        xonxoff: bool = True) -> bool:
+        """
+        Makes connection with given parameters
+
+        Args:
+            port (str): name of serial port to make connection with
+            baud (int): baud rate of connection
+            timeout (int): timeout on read operations
+            xonxoff (bool): enabling of software flow control
+
+        Returns:
+            None
+        """
+        try:
+            self.ser = serial.Serial(port=port, timeout=timeout,
+                                     xonxoff=xonxoff)
+            logger.info((f'Serial port opened, device {port}, baud {baud}, '
+                         f'timeout {timeout}, Software Flow Control {xonxoff}')
+                        )
+            # Checks if connection was actually opened
+            return not self.ser is None
+        except SerialException as e:
+            logger.info((f'Serial port failed to open: device {port}, '
+                         f'baud {baud}, timeout {timeout}, Software Flow '
+                         f'Control {xonxoff}, Error: {e}')
+                        )
+            return False
+
+    def read_all_waiting_bytes(self) -> str:
+        """
+        Reads all bytes waiting in the stream
+
+        Args:
+            None
+
+        Returns:
+            decoded string of bytes read
+        """
+        return self.ser.read(self.ser.in_waiting).decode('utf-8')
+
+    def close_connection(self) -> str:
+        """
+        Closes connection with serial port
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        self.ser.close()
+
+
 class SerialListener:
     """
     Listen for serial messages and convert into SNMP commands
     """
+
     def __init__(self):
         # Initialize parser and snmp command issuer
         self.kvm_parser = ParserKvmSequence()
@@ -71,15 +223,15 @@ class SerialListener:
 
         self.retry = {
             'max_attempts': int(config['snmp']['retry']['max_attempts']),
-            'retry_delay': int(config['snmp']['retry']['delay']),
+            'delay': int(config['snmp']['retry']['delay']),
             'timeout': int(config['snmp']['retry']['timeout'])
         }
 
         self.devices: dict[str: Device] = {}
-        for device_name in config['transport'].keys():
+        for device_name in config['devices'].keys():
             self.devices[device_name] = create_device_from_config_dict(
-                device_name, config['transport'][device_name]
-        )
+                device_name, config['devices'][device_name]
+            )
 
         self.cmd_counter = 0
 
@@ -98,7 +250,7 @@ class SerialListener:
         self.sysdwd.status('Opening serial port')
 
         # Makes the connection
-        serial_port    = config['serial']['device']
+        serial_port = config['serial']['device']
         serial_timeout = int(config['serial']['timeout'])
         if self.serial_conn.make_connection(serial_port,
                                             timeout=serial_timeout):
@@ -115,7 +267,8 @@ class SerialListener:
     def attempt_reconnect(self):
         time.sleep(0.5)
         if self.make_connection():
-            self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
+            self.event_loop.add_reader(self.serial_conn.ser,
+                                       self.read_serial_conn)
             self.scheduler.remove_reconnect_job()
             self.file_watchdog.stop()
 
@@ -151,27 +304,27 @@ class SerialListener:
             self.cmd_counter += 1
             self.event_loop.create_task(
                 self.device_cmd_runner.put_into_queue(
-                    TrippliteDeviceHealthcheckCmd(
+                    GetCommandWithRetry(
                         self.devices[device_name],
                         # always check the first outlet
                         self.devices[device_name].outlets[0],
-                        self.retry['timeout'],
+                        self.retry['timeout'], 1, 0,
                         self.cmd_counter
-                    )
+                    ), True
                 )
             )
 
     def add_power_change_to_queue(
             self,
-            device: Device, target_outlet: str, outlet_state: any
-        ) -> None:
+            device: Device, outlet: str, state: any
+    ) -> None:
         """
         Adds a power change to the cmd queue
 
         Args:
             device: Device object
-            target_outlet: string representation of target outlet
-            outlet_state: desired outlet state (in pysnmp state)
+            outlet: string representation of target outlet
+            state: desired outlet state (in pysnmp state)
 
         Returns:
 
@@ -179,24 +332,20 @@ class SerialListener:
         self.cmd_counter += 1
         self.event_loop.create_task(
             self.device_cmd_runner.put_into_queue(
-                TrippliteDevicePowerChangeCmd(
-                    device, target_outlet, outlet_state,
-                    self.retry['max_attempts'], self.retry['delay'],
-                    self.retry['timeout'],
+                SetCommandWithRetry(
+                    device, outlet, state,
+                    self.retry['timeout'], self.retry['max_attempts'],
+                    self.retry['delay'],
                     self.cmd_counter
                 )
             )
         )
-
 
     def start(self):
         """
         Entry point for starting listener
 
         Also sets up the healthcheck scheduler
-
-        Args:
-            None
 
         Returns:
             None
@@ -257,13 +406,14 @@ class SerialListener:
                     )
                 )
 
-            # Errors will be raised when only a portion of the sequence has been
-            # received and attempted to be parsed
+            # Errors will be raised when only a portion of the sequence has
+            # been received and attempted to be parsed
             except ParseError:
                 logger.warning((f'Parser failed to parse: "'
-                            f'{"".join(self.read_buffer)}"')
-                           )
+                                f'{"".join(self.read_buffer)}"')
+                               )
 
+            # If there was no error when parsing, attempt to send sequence
             else:
                 # Upon encountering quit and empty sequence, do nothing
                 if parsed_tokens[0] in ['quit', '']:
@@ -275,7 +425,8 @@ class SerialListener:
                                 f'{cmd}')
 
                     self.add_power_change_to_queue(
-                        device, f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+                        self.devices[f'{int(device):03d}'],
+                        f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
                     )
 
             curr_seq_start_pos = cursor_pos + 1
@@ -285,6 +436,7 @@ class SerialListener:
         # we only parse completed (\r at end) sequences
         del self.read_buffer[:curr_seq_start_pos]
 
+
 if __name__ == '__main__':
-    serial_listerner = SerialListener()
-    serial_listerner.start()
+    serial_listener = SerialListener()
+    serial_listener.start()
