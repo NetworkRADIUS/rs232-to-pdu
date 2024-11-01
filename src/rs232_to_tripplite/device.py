@@ -2,6 +2,7 @@ from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3
 
+import pysnmp.hlapi.asyncio as pysnmp
 
 class Device:
     """
@@ -10,17 +11,20 @@ class Device:
 
     def __init__(
             self,
-            name: str, outlets: list[str], transport: Transport
+            name: str, outlets: list[str], power_options: dict[str: any],
+            transport: Transport
     ):
         """
 
         Args:
             name: device name
             outlets: list of outlet names
+            power_options: mappings of power options to values
             transport: object for sending requests
         """
         self.name = name
         self.outlets = outlets
+        self.power_options = power_options
         self.transport = transport
 
     async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
@@ -34,7 +38,7 @@ class Device:
         """
         return await self.transport.get_outlet_state(outlet)
 
-    async def set_outlet_state(self, outlet: str, state: any) -> tuple[
+    async def set_outlet_state(self, outlet: str, state: str) -> tuple[
         bool, any]:
         """
         method for setting an outlet's state using the transport'
@@ -45,7 +49,12 @@ class Device:
         Returns:
             outlet state after sending the request
         """
-        return await self.transport.set_outlet_state(outlet, state)
+        if state not in self.power_options:
+            raise AttributeError(f'Attempting to set device {self.name} '
+                                 f'outlet {outlet} to unknown state {state}.')
+
+        return await self.transport.set_outlet_state(outlet,
+                                                     self.power_options[state])
 
 
 def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
@@ -61,6 +70,10 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
     """
     outlets = config_dict['outlets']
     transport = None  # should be over-writen or exception thrown
+
+    power_options = config_dict['power_options']
+    for option, value in power_options.items():
+        power_options[option] = pysnmp.Integer(value)
 
     if 'snmp' in config_dict:
         ip_address = config_dict['snmp']['ip_address']
@@ -116,4 +129,4 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
         # raise error if transport is not supported
         raise TypeError(f'Unsupported transport for device {name}')
 
-    return Device(name, list(outlets.keys()), transport)
+    return Device(name, list(outlets.keys()), power_options, transport)
