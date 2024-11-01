@@ -391,50 +391,50 @@ class SerialListener:
 
         for cursor_pos, buffer_char in enumerate(self.read_buffer):
 
-            if buffer_char != '\r':
-                continue
-
-            # If the \r char is encountered, attempt to parse sequence
-            try:
-                logger.debug((f'Received command sequence: "'
-                              f'{"".join(self.read_buffer)}"')
-                             )
-                # Attempt to parse part of read buffer containing sequence
-                parsed_tokens = self.kvm_parser.parse(
-                    ''.join(
-                        self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
-                    )
+            if buffer_char == '\r':
+                self.parse_buffer(
+                    self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
                 )
-
-            # Errors will be raised when only a portion of the sequence has
-            # been received and attempted to be parsed
-            except ParseError:
-                logger.warning((f'Parser failed to parse: "'
-                                f'{"".join(self.read_buffer)}"')
-                               )
-
-            # If there was no error when parsing, attempt to send sequence
-            else:
-                # Upon encountering quit and empty sequence, do nothing
-                if parsed_tokens[0] in ['quit', '']:
-                    logger.info('Quit or empty sequence detected')
-
-                else:
-                    cmd, device, outlet = parsed_tokens
-                    logger.info(f'Setting Device {device} Outlet {outlet} to '
-                                f'{cmd}')
-
-                    self.add_power_change_to_queue(
-                        self.devices[f'{int(device):03d}'],
-                        f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
-                    )
-
-            curr_seq_start_pos = cursor_pos + 1
+                curr_seq_start_pos = cursor_pos + 1
 
         # Delete parsed portion of buffer
         # Note that we do not attempt to reparse failed sequences because
         # we only parse completed (\r at end) sequences
         del self.read_buffer[:curr_seq_start_pos]
+
+    def parse_buffer(self, buffer):
+        # If the \r char is encountered, attempt to parse sequence
+        try:
+            logger.debug((f'Received command sequence: "'
+                          f'{"".join(self.read_buffer)}"')
+                         )
+            # Attempt to parse part of read buffer containing sequence
+            parsed_tokens = self.kvm_parser.parse(''.join(buffer))
+
+        # Errors will be raised when only a portion of the sequence has
+        # been received and attempted to be parsed
+        except ParseError:
+            logger.warning((f'Parser failed to parse: "'
+                            f'{"".join(self.read_buffer)}"')
+                           )
+
+        # If there was no error when parsing, attempt to send sequence
+        else:
+            self.consume_parsed_tokens(parsed_tokens)
+
+    def consume_parsed_tokens(self, tokens):
+        if tokens[0] in ['quit', '']:
+            logger.info('Quit or empty sequence detected')
+
+        else:
+            cmd, device, outlet = tokens
+            logger.info(f'Setting Device {device} Outlet {outlet} to '
+                        f'{cmd}')
+
+            self.add_power_change_to_queue(
+                self.devices[f'{int(device):03d}'],
+                f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+            )
 
 
 if __name__ == '__main__':
