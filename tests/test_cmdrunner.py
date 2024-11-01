@@ -1,47 +1,39 @@
 import unittest
 import asyncio
+from unittest import mock
 
-from sersnmprequests.snmpcmdrunner import SnmpCmdRunner
-from sersnmprequests.basesnmpcmd import BaseSnmpCmd
+from rs232_to_tripplite.commands.base import BaseDeviceCommand
+from rs232_to_tripplite.rs232tripplite import DeviceCmdRunner
 
 
-class DummySnmpCmd(BaseSnmpCmd):
-    """
-    Dummy SNMP Cmd class for testing purposes
+async def dummy_sleep(timeout):
+    await asyncio.sleep(timeout)
 
-    Doesn't send any requests
-    """
-    async def run_cmd(self):
-        await asyncio.sleep(0)
+class DummyCmd(BaseDeviceCommand):
+    async def _invoke_device_command(self) -> tuple[bool, any]:
+        return True, None
+
+    async def send_command(self):
+        return None
 
 
 class TestCmdRunner(unittest.TestCase):
     """
     Test cases for the command runner (priority queue)
     """
-    @classmethod
-    def setUp(cls):
+    def setUp(self):
         """
         Setups the event loop and cmd_runner object
         """
-        cls.event_loop = asyncio.new_event_loop()
-        cls.cmd_runner = SnmpCmdRunner()
+        self.event_loop = asyncio.new_event_loop()
+        self.cmd_runner = DeviceCmdRunner()
 
-    @classmethod
-    def tearDown(cls):
+    def tearDown(self):
         """
         Closes the event loop as tear down
         """
-        cls.event_loop.close()
+        self.event_loop.close()
 
-    def create_dummy_cmd(self):
-        """
-        Helper function to create a dummy SNMP cmd
-        """
-        return DummySnmpCmd(
-            None, None, None, None, None, None,
-            None, None, None, None, None, None, None
-        )
 
     def test_add_to_queue(self):
         """
@@ -49,7 +41,7 @@ class TestCmdRunner(unittest.TestCase):
         """
         pre_queue_size = self.cmd_runner.queue.qsize()
 
-        dummy_cmd = self.create_dummy_cmd()
+        dummy_cmd = DummyCmd(None, '', 1)
         self.event_loop.run_until_complete(
             self.cmd_runner.put_into_queue(dummy_cmd)
         )
@@ -61,8 +53,8 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to ensure that high priority items are run first
         """
-        high_prio_dummy_cmd = self.create_dummy_cmd()
-        low_prio_dummy_cmd = self.create_dummy_cmd()
+        high_prio_dummy_cmd = DummyCmd(None, '', 1)
+        low_prio_dummy_cmd = DummyCmd(None, '', 2)
 
         # place low priority item first
         self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False))
@@ -78,8 +70,8 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to ensure that low priority items are not run first
         """
-        high_prio_dummy_cmd = self.create_dummy_cmd()
-        low_prio_dummy_cmd = self.create_dummy_cmd()
+        high_prio_dummy_cmd = DummyCmd(None, '', 1)
+        low_prio_dummy_cmd = DummyCmd(None, '', 2)
 
         # place high priority item first
         self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True))
@@ -96,13 +88,15 @@ class TestCmdRunner(unittest.TestCase):
         """
         pre_queue_size = self.cmd_runner.queue.qsize()
 
-        dummy_cmd = self.create_dummy_cmd()
+        dummy_cmd = DummyCmd(None, '', 1)
 
         # begin listening for new items in queue
         self.event_loop.create_task(self.cmd_runner.queue_processor(self.event_loop))
 
         # put new item into queue
         self.event_loop.run_until_complete(self.cmd_runner.put_into_queue(dummy_cmd))
+
+        self.event_loop.run_until_complete(dummy_sleep(5))
 
         # item in queue should be instantly consumed
         post_queue_size = self.cmd_runner.queue.qsize()

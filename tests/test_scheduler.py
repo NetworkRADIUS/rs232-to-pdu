@@ -2,7 +2,7 @@ import unittest
 import asyncio
 
 
-from sersnmpscheduler.sersnmpscheduler import ListenerScheduler
+from rs232_to_tripplite.rs232tripplite import ListenerScheduler
 
 
 class TestScheduler(unittest.TestCase):

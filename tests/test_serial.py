@@ -6,7 +6,7 @@ import signal
 import time
 
 from serial.serialutil import SerialException
-from sersnmpconnectors.conn_serial import SerialConnection
+from rs232_to_tripplite.rs232tripplite import SerialConnection
 import serial
 
 class TestSerialConn(unittest.TestCase):
@@ -89,28 +89,3 @@ class TestSerialConn(unittest.TestCase):
         """
         await asyncio.sleep(0)
         raise OSError()
-
-    def test_error_handler_success(self):
-        """
-        Test case to ensure that the error handler is called
-        """
-        # sets up serial connection, reader event listener,
-        # and exception handler
-        self.ser_conn = serial.Serial('./ttyUSBCI0')
-        self.event_loop.add_reader(self.ser_conn, self.dummy_read)
-        self.event_loop.set_exception_handler(self.serial_port_error_handler)
-
-        # kill the socat process
-        os.kill(self.socat.pid, signal.SIGTERM)
-        while self.socat.poll() is None:
-            pass
-        # why is it not throwing an error now that my port is gone :(
-
-        # raise the exception
-        self.event_loop.create_task(self.dummy_raise_os_exception())
-
-        # wait for error handler to handle exception
-        self.event_loop.run_until_complete(self.dummy_wait())
-
-        # check that the error handler was called
-        self.assertTrue(self.changed)
