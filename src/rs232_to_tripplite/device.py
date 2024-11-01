@@ -12,6 +12,7 @@ import re
 import yaml
 import pysnmp.hlapi.asyncio as pysnmp
 
+
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3, TransportSnmp
