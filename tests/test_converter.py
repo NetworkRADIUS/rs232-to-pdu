@@ -68,6 +68,24 @@ class TestCoverter(unittest.TestCase):
                         'of': pysnmp.Integer(1),
                         'cy': pysnmp.Integer(3),
                     }
+                },
+                '002': {
+                    'snmp': {
+                        'v1': {
+                            'public_community': 'public',
+                            'private_community': 'private'
+                        },
+                        'ip_address': '127.0.0.1',
+                        'port': 161
+                    },
+                    'outlets': {
+                        '001': '1.1',
+                        '002': '1.2'
+                    },
+                    'power_options': {
+                        'on': pysnmp.Integer(2),
+                        'of': pysnmp.Integer(1)
+                    }
                 }
             }, 10, 5
         )
@@ -128,3 +146,28 @@ class TestCoverter(unittest.TestCase):
             KeyError,
             self.converter.read_serial_conn
         )
+
+    def test_power_options(self):
+        """
+        Tests end-to-end with power options
+        Returns:
+
+        """
+        with mock.patch('rs232_to_tripplite.rs232tripplite.Rs2323ToTripplite.'
+                        'add_power_change_to_queue') as mock_func:
+
+            self.rs232_wr_dev.write('cy 1 1\r'.encode('utf-8'))
+            time.sleep(1)
+            self.converter.read_serial_conn()
+            mock_func.assert_called()
+            mock_func.reset_mock()
+
+            # device 2 does not have a cycle power option
+            self.rs232_wr_dev.write('cy 2 1\r'.encode('utf-8'))
+            time.sleep(1)
+            self.converter.read_serial_conn()
+            # In theory, should be called twice, but because we wrapped it in
+            # a coroutine (and we never started the event loop), will never be
+            # called
+            mock_func.assert_not_called()
+            mock_func.reset_mock()
