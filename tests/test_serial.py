@@ -6,7 +6,6 @@ import signal
 import time
 
 from serial.serialutil import SerialException
-from rs232_to_tripplite.rs232tripplite import SerialConnection
 import serial
 
 class TestSerialConn(unittest.TestCase):
@@ -15,24 +14,21 @@ class TestSerialConn(unittest.TestCase):
     """
 
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         """
         Creates the connector and event loop objects and connects to the port
         """
-        cls.socat = subprocess.Popen(['socat', '-d', '-d', '-T', '1', 'pty,raw,echo=0,link=./ttyUSBCI0', 'pty,raw,echo=0,link=./ttyUSBCI1'])
+        cls.socat = subprocess.Popen(['socat', '-d', '-d', '-T', '60', 'pty,raw,echo=0,link=./ttyUSBCI0', 'pty,raw,echo=0,link=./ttyUSBCI1'])
+
         time.sleep(1)
 
-
-        cls.ser_conn = SerialConnection()
-        cls.ser_conn.make_connection('./ttyUSBCI0')
-
-
+        cls.ser_conn_rd = serial.Serial('./ttyUSBCI0', timeout=10, xonxoff=True)
+        cls.ser_conn_wr = serial.Serial('./ttyUSBCI1', timeout=10, xonxoff=True)
         cls.event_loop = asyncio.new_event_loop()
-
         cls.changed = False
 
     @classmethod
-    def tearDown(cls):
+    def tearDownClass(cls):
         """
         Tear down of test case to close the event loop
         """
@@ -48,13 +44,8 @@ class TestSerialConn(unittest.TestCase):
         """
         Test case for successfully making a connection with the serial port
         """
-        self.assertIsInstance(self.ser_conn.ser, serial.Serial)
-
-    async def write_to_port(self):
-        """
-        Async helper function for writing to the loopback device
-        """
-        subprocess.call('sudo sh -c \'echo -n "sest" > /dev/ttyUSBCI1\'', shell=True)
+        self.assertIsInstance(self.ser_conn_rd, serial.Serial)
+        self.assertIsInstance(self.ser_conn_wr, serial.Serial)
 
     async def dummy_wait(self, duration=5):
         """
@@ -66,26 +57,6 @@ class TestSerialConn(unittest.TestCase):
         """
         Test case for attempting to connect to a non-existing port
         """
-        self.assertFalse(self.ser_conn.make_connection('/dev/doesNotExistTty'))
-
-    def serial_port_error_handler(self, loop, context):
-        """
-        Event loop error handler
-        """
-        match type(context['exception']):
-            case OSError:
-                self.event_loop.remove_reader(self.ser_conn)
-                self.ser_conn.close()
-                self.changed = True
-
-    def dummy_read(self):
-        """
-        Dummy function that occurs when port is ready to read
-        """
-
-    async def dummy_raise_os_exception(self):
-        """
-        Helper funciton to raise exception simulating a disconnected port
-        """
-        await asyncio.sleep(0)
-        raise OSError()
+        self.assertRaises(
+            SerialException,
+            serial.Serial, './does_not_exist')

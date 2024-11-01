@@ -87,38 +87,6 @@ class DeviceCmdRunner:
             priority, device_cmd = await self.queue.get()
             await device_cmd.send_command()
 
-
-class ListenerScheduler:
-    def __init__(self, event_loop):
-        self.scheduler = AsyncIOScheduler(event_loop=event_loop)
-
-        self.jobs = {}
-
-    def start_healthcheck_job(self, add_hc_to_queue_func, frequency=5):
-        self.jobs['healthcheck'] = self.scheduler.add_job(
-            add_hc_to_queue_func, 'interval', seconds=frequency
-        )
-
-    def start_reconnect_job(self, reconnect_func, frequency=5):
-        self.jobs['reconnect'] = self.scheduler.add_job(
-            reconnect_func, 'interval', seconds=frequency
-        )
-
-    def start_systemd_notify(self, notify_func, frequency):
-        self.jobs['systemd_notify'] = self.scheduler.add_job(
-            notify_func, 'interval', seconds=frequency
-        )
-
-    def remove_reconnect_job(self):
-        self.jobs['reconnect'].remove()
-
-    def start(self):
-        self.scheduler.start()
-
-    def shutdown(self, wait=False):
-        self.scheduler.shutdown(wait)
-
-
 class LookForFileEH(FileSystemEventHandler):
     def __init__(self, file_to_watch, callback: Callable) -> None:
         self.file_to_watch = file_to_watch
@@ -128,90 +96,24 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file_to_watch:
             self.callback_when_found()
 
-
-class SerialConnection:
-    """
-    Wrapper class for making a serial connection
-    """
-
-    def __init__(self) -> None:
-        self.ser = None
-
-    def make_connection(self,
-                        port: str = None,
-                        baud: int = 9600,
-                        timeout: int = None,
-                        xonxoff: bool = True) -> bool:
-        """
-        Makes connection with given parameters
-
-        Args:
-            port (str): name of serial port to make connection with
-            baud (int): baud rate of connection
-            timeout (int): timeout on read operations
-            xonxoff (bool): enabling of software flow control
-
-        Returns:
-            None
-        """
-        try:
-            self.ser = serial.Serial(port=port, timeout=timeout,
-                                     xonxoff=xonxoff)
-            logger.info((f'Serial port opened, device {port}, baud {baud}, '
-                         f'timeout {timeout}, Software Flow Control {xonxoff}')
-                        )
-            # Checks if connection was actually opened
-            return not self.ser is None
-        except SerialException as e:
-            logger.info((f'Serial port failed to open: device {port}, '
-                         f'baud {baud}, timeout {timeout}, Software Flow '
-                         f'Control {xonxoff}, Error: {e}')
-                        )
-            return False
-
-    def read_all_waiting_bytes(self) -> str:
-        """
-        Reads all bytes waiting in the stream
-
-        Args:
-            None
-
-        Returns:
-            decoded string of bytes read
-        """
-        return self.ser.read(self.ser.in_waiting).decode('utf-8')
-
-    def close_connection(self) -> str:
-        """
-        Closes connection with serial port
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        self.ser.close()
-
-
-class SerialListener:
+class Rs2323ToTripplite:
     def __init__(
             self,
             serial_device: str, serial_timeout: int,
-            snmp_max_attempts: int, snmp_delay: int, snmp_timeout: int,
+            max_attempts: int, delay: int, cmd_timeout: int,
             device_config: dict, healthcheck_frequency: int ):
         """
 
         Args:
             serial_device: path to serial device
             serial_timeout: timeout in seconds for connecting to serial device
-            snmp_max_attempts: maximum number of attempts for an SNMP command
-            snmp_delay: delay between SNMP retries
-            snmp_timeout: timeout in seconds for an SNMP command
+            max_attempts: maximum number of attempts for a command
+            delay: delay between command retries
+            cmd_timeout: timeout in seconds for a command
             device_config: dictionary containing config data for devices
-            healthcheck_frequency: frequency of an SNMP healthcheck
+            healthcheck_frequency: frequency of a healthcheck
         """
-        # Initialize parser and snmp command issuer
+        # Initialize parser and command issuer
         self.kvm_parser = ParserKvmSequence()
         self.device_cmd_runner = DeviceCmdRunner()
 
@@ -219,11 +121,13 @@ class SerialListener:
         self.serial_timeout = serial_timeout
 
         self.event_loop = asyncio.new_event_loop()
-        self.scheduler = ListenerScheduler(self.event_loop)
+
+        self.scheduler = AsyncIOScheduler(event_loop=self.event_loop)
+        self.jobs = {}
+
         self.file_watchdog = None
 
-        # Create serial connection
-        self.serial_conn = SerialConnection()
+        self.serial_conn = None
 
         self.healthcheck_frequency = healthcheck_frequency
 
@@ -231,9 +135,9 @@ class SerialListener:
         self.read_buffer = []
 
         self.retry = {
-            'max_attempts': snmp_max_attempts,
-            'delay': snmp_delay,
-            'timeout': snmp_timeout
+            'max_attempts': max_attempts,
+            'delay': delay,
+            'timeout': cmd_timeout
         }
 
         self.devices: dict[str: Device] = {}
@@ -259,18 +163,26 @@ class SerialListener:
         self.sysdwd.status('Opening serial port')
 
         # Makes the connection
-        serial_port = self.serial_device
-        serial_timeout = self.serial_timeout
-        if self.serial_conn.make_connection(serial_port,
-                                            timeout=serial_timeout):
-            self.sysdwd.status('Serial port successfully opened')
-            return True
-        self.sysdwd.status('Serial port failed to open')
-        return False
+        try:
+            self.serial_conn = serial.Serial(
+                port=self.serial_device, timeout=self.serial_timeout,
+                xonxoff=True
+            )
+            if self.serial_conn.is_open:
+                logger.info(f'Opened serial device {self.serial_device}')
+                self.sysdwd.status('Serial port successfully opened')
+                return True
+            logger.warning(f'Serial device {self.serial_device} is not open')
+            self.sysdwd.status('Serial port is not open')
+            return False
+        except SerialException as e:
+            logger.error(f'Failed to open serial device {self.serial_device}')
+            self.sysdwd.status('Failed to open serial device')
+            return False
 
     def close_connection(self):
         self.sysdwd.status('Closing serial port')
-        self.serial_conn.close_connection()
+        self.serial_conn.close()
         self.sysdwd.status('Serial port closed')
 
     def attempt_reconnect(self):
@@ -278,7 +190,7 @@ class SerialListener:
         if self.make_connection():
             self.event_loop.add_reader(self.serial_conn.ser,
                                        self.read_serial_conn)
-            self.scheduler.remove_reconnect_job()
+            self.jobs['reconnect'].remove()
             self.file_watchdog.stop()
 
     def serial_error_handler(self, loop, context):
@@ -287,7 +199,9 @@ class SerialListener:
                 loop.remove_reader(self.serial_conn.ser)
                 self.close_connection()
 
-                self.scheduler.start_reconnect_job(self.attempt_reconnect)
+                self.jobs['reconnect'] = self.scheduler.add_job(
+                    self.attempt_reconnect, 'interval', seconds=5
+                )
 
                 watch_path = '/'.join(
                     self.serial_device.split('/')[:-1]
@@ -333,7 +247,7 @@ class SerialListener:
         Args:
             device: Device object
             outlet: string representation of target outlet
-            state: desired outlet state (in pysnmp state)
+            state: desired outlet state
 
         Returns:
 
@@ -364,18 +278,19 @@ class SerialListener:
         while not self.make_connection():
             time.sleep(self.serial_timeout)
 
-        self.event_loop.add_reader(self.serial_conn.ser, self.read_serial_conn)
+        self.event_loop.add_reader(self.serial_conn, self.read_serial_conn)
 
         self.event_loop.create_task(
             self.device_cmd_runner.queue_processor(self.event_loop)
         )
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
-        self.scheduler.start_healthcheck_job(
-            self.add_healthcheck_to_queue, self.healthcheck_frequency
+        self.jobs['healthcheck'] = self.scheduler.add_job(
+            self.add_healthcheck_to_queue, 'interval',
+            seconds=self.healthcheck_frequency
         )
-        self.scheduler.start_systemd_notify(
-            self.sysdwd.notify, self.sysdwd.timeout / 2e6
+        self.jobs['systemd_notify'] = self.scheduler.add_job(
+            self.sysdwd.notify, 'interval', seconds=self.sysdwd.timeout / 2e6
         )
         self.scheduler.start()
 
@@ -394,7 +309,9 @@ class SerialListener:
         Returns:
 
         """
-        self.read_buffer += self.serial_conn.read_all_waiting_bytes()
+        self.read_buffer += self.serial_conn.read(
+            self.serial_conn.in_waiting
+        ).decode('utf-8')
 
         curr_seq_start_pos = 0
 
