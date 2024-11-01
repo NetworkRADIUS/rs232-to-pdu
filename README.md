@@ -183,6 +183,9 @@ conform the yaml format and have the following sections.
 ```power_states```:\
 \- ```cy_delay```: time in seconds between off and on commands
 
+```power_options```:\
+\- ```cy_delay```: time in seconds between off and on commands
+
 ```banks```:\
 \- ```<bank number>*```\
 &emsp; \- ```snmp```:\
