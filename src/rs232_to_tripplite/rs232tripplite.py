@@ -28,12 +28,6 @@ from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
-POWERBAR_VALUES = {
-    'on': pysnmp.Integer(2),
-    'of': pysnmp.Integer(1),
-    'cy': pysnmp.Integer(3)
-}
-
 
 class DeviceCmdRunner:
     """
@@ -415,5 +409,5 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             else:
                 self.add_power_change_to_queue(
                     self.devices[f'{int(device):03d}'],
-                    f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+                    f'{int(outlet):03d}', cmd
                 )
