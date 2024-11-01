@@ -153,6 +153,8 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
                 device_name, device_config[device_name]
             )
 
+        self.toggle_delay = config['power_options']['cy_delay']
+
         self.cmd_counter = 0
 
         self.sysdwd = sysdwd.watchdog()
@@ -291,6 +293,12 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             )
         )
 
+    async def manual_outlet_toggle(self, device: Device, outlet: str):
+        logger.info(f'Performing manual power toggle for device {device.name}')
+        self.add_power_change_to_queue(device, outlet, 'of')
+        await asyncio.sleep(self.toggle_delay)
+        self.add_power_change_to_queue(device, outlet, 'on')
+
     def start(self):
         """
         Entry point for starting listener
@@ -400,7 +408,12 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             logger.info(f'Setting Device {device} Outlet {outlet} to '
                         f'{cmd}')
 
-            self.add_power_change_to_queue(
-                self.devices[f'{int(device):03d}'],
-                f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
-            )
+            if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_options:
+                self.event_loop.create_task(
+                    self.manual_outlet_toggle(self.devices[f'{int(device):03d}'], f'{int(outlet):03d}')
+                )
+            else:
+                self.add_power_change_to_queue(
+                    self.devices[f'{int(device):03d}'],
+                    f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+                )
