@@ -10,6 +10,7 @@ from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3
 
+import pysnmp.hlapi.asyncio as pysnmp
 
 class Device:
     """
