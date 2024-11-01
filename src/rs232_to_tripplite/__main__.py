@@ -426,7 +426,7 @@ class SerialListener:
 
                     self.add_power_change_to_queue(
                         self.devices[f'{int(device):03d}'],
-                        f'{int(outlet):03d}', POWERBAR_VALUES[cmd]
+                        f'{int(outlet):03d}', cmd
                     )
 
             curr_seq_start_pos = cursor_pos + 1
