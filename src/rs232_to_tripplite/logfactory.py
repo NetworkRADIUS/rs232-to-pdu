@@ -20,31 +20,53 @@ class ReprFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging() -> None:
+def get_file_handler(dest): # pylint: disable=missing-function-docstring
+    return logging.FileHandler(dest)
+
+def get_syslog_handler(dest): # pylint: disable=missing-function-docstring
+    a = logging.handlers.SysLogHandler(address=dest)
+    return a
+
+def get_stdstream_handler(dest): # pylint: disable=missing-function-docstring
+    if dest == 'stdout':
+        return logging.StreamHandler(sys.stdout)
+    raise ValueError('Unsupported stream')
+
+logging_types = {
+    'file': get_file_handler,
+    'syslog': get_syslog_handler,
+    'stream': get_stdstream_handler
+}
+
+def setup_logging(destination_type, destination) -> None:
     """
-    Sets up some default loggers and configs
-
-    Expected to be run at start of application
-
+    Setups initial loggers
     Args:
-        None
+        destination_type: type of destination
+        destination: name of destination
 
     Returns:
-        None
-    """
-    repr_formatter = ReprFormatter(
-        '%(asctime)s - %(name)s - %(levelname)s : At Line %(lineno)s of %(module)s :: %(message)s')
 
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setFormatter(repr_formatter)
-    stdout_handler.setLevel(logging.INFO)
+    """
+    if destination_type not in logging_types:
+        raise ValueError('Invalid destination type')
+
+    repr_formatter = ReprFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s : '
+        'At Line %(lineno)s of %(module)s :: %(message)s'
+    )
+
+    # get appropriate handler
+    handler = logging_types[destination_type](destination)
+    handler.setFormatter(repr_formatter)
+    handler.setLevel(logging.INFO)
 
     root_logger = logging.getLogger('')
     root_logger.setLevel(logging.INFO)
 
-    ser2snmp_logger = logging.getLogger('ser2snmp')
+    ser2snmp_logger = logging.getLogger('rs232totripplite')
     ser2snmp_logger.setLevel(logging.INFO)
-    ser2snmp_logger.addHandler(stdout_handler)
+    ser2snmp_logger.addHandler(handler)
 
 
 def create_logger(
@@ -66,7 +88,7 @@ def create_logger(
     Returns:
         the newly create logger object
     """
-    logger = logging.getLogger(f'ser2snmp.{name}')
+    logger = logging.getLogger(f'rs232totripplite.{name}')
     logger.setLevel(level)
     logger.propagate = propagation
     if log_filter:

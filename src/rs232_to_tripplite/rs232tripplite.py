@@ -25,7 +25,6 @@ from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
 # Set up logger for this module
-nrlogfac.setup_logging()
 logger = nrlogfac.create_logger(__name__)
 
 POWERBAR_VALUES = {
