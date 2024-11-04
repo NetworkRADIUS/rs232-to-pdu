@@ -88,7 +88,7 @@ log:
 
 # Sample 2 : logging to syslog
 log:
-  syslog: /var/run/syslog
+  syslog: 2  # user-level messages facility
 
 # Sample 3: logging to stream
 log:
@@ -159,7 +159,7 @@ This tool expects a configuration file called ```config.yaml```, placed under ``
 conform the yaml format and have the following sections.
 
 ```log```:\
-\- ```file``` | ```syslog``` | ```stream```: logging destination as a string
+\- ```file``` | ```syslog``` | ```stream```: logging destination as a string or int (for syslog facilities)
 
 ```serial```:\
 \- ```device```: string value of serial port tty file\
