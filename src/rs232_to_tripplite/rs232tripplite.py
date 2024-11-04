@@ -78,7 +78,7 @@ class DeviceCmdRunner:
             # Will not grab next item until the previous command has been
             # completed
             _, device_cmd = await self.queue.get()
-            await device_cmd.send_command()
+            await device_cmd.command_send()
 
 class LookForFileEH(FileSystemEventHandler):
     """
@@ -155,7 +155,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
         self.sysdwd = sysdwd.watchdog()
 
-    def make_connection(self):
+    def serial_conn_open(self):
         """
         Establishes the serial port connection
 
@@ -185,7 +185,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self.sysdwd.status('Failed to open serial device')
             return False
 
-    def close_connection(self):
+    def serial_conn_close(self):
         """
         Closes the serial port connection
 
@@ -204,9 +204,9 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
         """
         time.sleep(0.5)
-        if self.make_connection():
+        if self.serial_conn_open():
             self.event_loop.add_reader(self.serial_conn.ser,
-                                       self.read_serial_conn)
+                                       self.serial_conn_read)
             self.jobs['reconnect'].remove()
             self.file_watchdog.stop()
 
@@ -222,7 +222,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         """
         if isinstance(OSError, context['exception']):
             loop.remove_reader(self.serial_conn.ser)
-            self.close_connection()
+            self.serial_conn_close()
 
             self.jobs['reconnect'] = self.scheduler.add_job(
                 self.attempt_reconnect, 'interval', seconds=5
@@ -241,7 +241,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self.file_watchdog.start()
             self.file_watchdog.join()
 
-    def add_healthcheck_to_queue(self) -> None:
+    def healthcheck_enqueue(self) -> None:
         """
         Adds a healthcheck to the cmd queue
 
@@ -262,7 +262,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
                 )
             )
 
-    def add_power_change_to_queue(
+    def power_change_enqueue(
             self,
             device: Device, outlet: str, state: any
     ) -> None:
@@ -289,7 +289,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             )
         )
 
-    async def manual_outlet_toggle(self, device: Device, outlet: str):
+    async def outlet_manual_toggle(self, device: Device, outlet: str):
         """
         Manually toggle the power of an outlet through off and on commands
         Args:
@@ -300,9 +300,9 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
         """
         logger.info(f'Performing manual power toggle for device {device.name}')
-        self.add_power_change_to_queue(device, outlet, 'of')
+        self.power_change_enqueue(device, outlet, 'of')
         await asyncio.sleep(self.toggle_delay)
-        self.add_power_change_to_queue(device, outlet, 'on')
+        self.power_change_enqueue(device, outlet, 'on')
 
     def start(self):
         """
@@ -315,10 +315,10 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         """
         self.sysdwd.status('Initiating application')
 
-        while not self.make_connection():
+        while not self.serial_conn_open():
             time.sleep(self.serial_timeout)
 
-        self.event_loop.add_reader(self.serial_conn, self.read_serial_conn)
+        self.event_loop.add_reader(self.serial_conn, self.serial_conn_read)
 
         self.event_loop.create_task(
             self.device_cmd_runner.queue_processor(self.event_loop)
@@ -326,7 +326,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
         self.jobs['healthcheck'] = self.scheduler.add_job(
-            self.add_healthcheck_to_queue, 'interval',
+            self.healthcheck_enqueue, 'interval',
             seconds=self.healthcheck_frequency
         )
         self.jobs['systemd_notify'] = self.scheduler.add_job(
@@ -337,12 +337,12 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         try:
             self.event_loop.run_forever()
         except KeyboardInterrupt:
-            self.close_connection()
+            self.serial_conn_close()
             self.event_loop.stop()
             self.scheduler.shutdown(False)
             self.sysdwd.status('Shutting down application')
 
-    def read_serial_conn(self):
+    def serial_conn_read(self):
         """
         Parses input from rs232 device and add cmd to queue if needed
 
@@ -358,7 +358,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         for cursor_pos, buffer_char in enumerate(self.read_buffer):
 
             if buffer_char == '\r':
-                self.parse_buffer(
+                self.buffer_parse(
                     self.read_buffer[curr_seq_start_pos:cursor_pos + 1]
                 )
                 curr_seq_start_pos = cursor_pos + 1
@@ -368,7 +368,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         # we only parse completed (\r at end) sequences
         del self.read_buffer[:curr_seq_start_pos]
 
-    def parse_buffer(self, buffer):
+    def buffer_parse(self, buffer):
         """
         Parses \r terminated section of buffer
         Args:
@@ -394,9 +394,9 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
         # If there was no error when parsing, attempt to send sequence
         else:
-            self.consume_parsed_tokens(parsed_tokens)
+            self.parsed_tokens_consume(parsed_tokens)
 
-    def consume_parsed_tokens(self, tokens):
+    def parsed_tokens_consume(self, tokens):
         """
         Consumes parsed tokens to act accordingly
         Args:
@@ -415,12 +415,12 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
             if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_states:
                 self.event_loop.create_task(
-                    self.manual_outlet_toggle(
+                    self.outlet_manual_toggle(
                         self.devices[f'{int(device):03d}'],
                         f'{int(outlet):03d}')
                 )
             else:
-                self.add_power_change_to_queue(
+                self.power_change_enqueue(
                     self.devices[f'{int(device):03d}'],
                     f'{int(outlet):03d}', cmd
                 )

@@ -20,7 +20,7 @@ class Transport(ABC):
         self.outlets = outlets
 
     @abstractmethod
-    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
+    async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
         """
         Abstract method for retrieving the state of an outlet
         Args:
@@ -31,7 +31,7 @@ class Transport(ABC):
         """
 
     @abstractmethod
-    async def set_outlet_state(self, outlet: str, state: any) -> tuple[
+    async def outlet_state_set(self, outlet: str, state: any) -> tuple[
         bool, any]:
         """
         Abstract method for setting the state of an outlet
