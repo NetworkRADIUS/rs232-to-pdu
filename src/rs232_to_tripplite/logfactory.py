@@ -20,7 +20,7 @@ class ReprFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging() -> None:
+def setup() -> None:
     """
     Sets up some default loggers and configs
 

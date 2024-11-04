@@ -3,7 +3,7 @@ import yaml
 
 import unittest
 
-from rs232_to_tripplite.device import create_device_from_config_dict, Device # pylint: disable=import-error
+from rs232_to_tripplite.device import device_from_config, Device # pylint: disable=import-error
 
 from rs232_to_tripplite.device import FactoryDevice  # pylint: disable=import-error
 from rs232_to_tripplite.transport.base import Transport  # pylint: disable=import-error
@@ -118,30 +118,30 @@ class TestDevice(unittest.TestCase):
         """
         self.device_config['power_states'] = {'of':1, 'on':2, 'cy':3}
         self.assertIsInstance(
-            create_device_from_config_dict('int_all', self.device_config),
+            device_from_config('int_all', self.device_config),
             Device
         )
 
         self.device_config['power_states'] = {'of':1, 'on':2}
         self.assertIsInstance(
-            create_device_from_config_dict('int_no_cy', self.device_config),
+            device_from_config('int_no_cy', self.device_config),
             Device
         )
 
         self.device_config['power_states'] = {'of':'1', 'on':'2', 'cy':'3'}
         self.assertIsInstance(
-            create_device_from_config_dict('str_all', self.device_config),
+            device_from_config('str_all', self.device_config),
             Device
         )
 
         self.device_config['power_states'] = {'of':'1', 'on':'2'}
         self.assertIsInstance(
-            create_device_from_config_dict('str_no_cy', self.device_config),
+            device_from_config('str_no_cy', self.device_config),
             Device
         )
 
         self.device_config['power_states'] = {1:'1'}
         self.assertRaises(
             TypeError,
-            create_device_from_config_dict, 'bad_type', self.device_config
+            device_from_config, 'bad_type', self.device_config
         )

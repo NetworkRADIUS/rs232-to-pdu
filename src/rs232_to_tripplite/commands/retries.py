@@ -13,7 +13,7 @@ from rs232_to_tripplite.device import Device
 logger = nrlogfac.create_logger(__name__)
 
 
-class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-arguments
+class CommandRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-arguments
     """
     class representing a command used on UDP, which is unreliable and may want
     to use retries
@@ -38,7 +38,7 @@ class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-argu
         self.max_attempts = max_attempts
         self.delay = delay
 
-    async def command_send(self):
+    async def send(self):
         """
         outward facing interface to run command
 
@@ -48,29 +48,29 @@ class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-argu
         for __attempt in range(self.max_attempts):
             try:
                 async with asyncio.timeout(self.timeout):
-                    success, result = await self._command_invoke()
+                    success, result = await self._invoke()
 
                 if success:
-                    self.handler_cmd_success(result)
+                    self.handler_success(result)
                     return True
-                self.handler_cmd_failure(result)
+                self.handler_failure(result)
 
             except TimeoutError:
-                self.handler_cmd_timeout()
+                self.handler_timeout()
 
         self.handler_max_attempts()
         return False
 
     @abstractmethod
-    def handler_cmd_success(self, result): # pylint: disable=missing-function-docstring
+    def handler_success(self, result): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
-    def handler_cmd_failure(self, result): # pylint: disable=missing-function-docstring
+    def handler_failure(self, result): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
-    def handler_cmd_timeout(self): # pylint: disable=missing-function-docstring
+    def handler_timeout(self): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
@@ -78,24 +78,24 @@ class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-argu
         ...
 
 
-class GetCommandWithRetry(CommandWithRetry):
+class CommandRetryGet(CommandRetry):
     """
     class representing a UDP command that is retrieving the state of an outlet
     """
 
-    async def _command_invoke(self) -> tuple[bool, any]:
+    async def _invoke(self) -> tuple[bool, any]:
         return await self.device.outlet_state_get(self.outlet)
 
-    def handler_cmd_success(self, result):
+    def handler_success(self, result):
         logger.info(f'Command #{self._id} passed when sending GET command to '
                     f'outlet {self.outlet} on device {self.device.name}.')
 
-    def handler_cmd_failure(self, result):
+    def handler_failure(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send GET'
                      f'command to outlet {self.outlet} on device '
                      f'{self.device.name}. Command result: {result}')
 
-    def handler_cmd_timeout(self):
+    def handler_timeout(self):
         logger.error(f'Command #{self._id} timed out when attempting to send '
                      f'GET command to outlet {self.outlet} on device '
                      f'{self.device.name}.')
@@ -106,7 +106,7 @@ class GetCommandWithRetry(CommandWithRetry):
                      f'{self.outlet} on device {self.device.name}.')
 
 
-class SetCommandWithRetry(CommandWithRetry):
+class CommandRetrySet(CommandRetry):
     """
     class representing a UDP command that is setting the state of an outlet
     """
@@ -130,21 +130,21 @@ class SetCommandWithRetry(CommandWithRetry):
 
         self.state = state
 
-    async def _command_invoke(self) -> tuple[bool, any]:
+    async def _invoke(self) -> tuple[bool, any]:
         return await self.device.outlet_state_set(self.outlet, self.state)
 
-    def handler_cmd_success(self, result):
+    def handler_success(self, result):
         logger.info(f'Command #{self._id} passed when sending SET command to '
                     f'outlet {self.outlet} on device {self.device.name} with '
                     f'state of {self.state}.')
 
-    def handler_cmd_failure(self, result):
+    def handler_failure(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send SET'
                      f'command to outlet {self.outlet} on device '
                      f'{self.device.name} with state {self.state}. Command '
                      f'result: {result}')
 
-    def handler_cmd_timeout(self):
+    def handler_timeout(self):
         logger.error(f'Command #{self._id} timed out when attempting to send '
                      f'SET command to outlet {self.outlet} on device '
                      f'{self.device.name} with state {self.state}.')

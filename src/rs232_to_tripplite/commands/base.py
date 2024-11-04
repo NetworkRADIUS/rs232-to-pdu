@@ -26,7 +26,7 @@ class BaseDeviceCommand(ABC): # pylint: disable=too-few-public-methods
         self._id = _id
 
     @abstractmethod
-    async def _command_invoke(self) -> tuple[bool, any]:
+    async def _invoke(self) -> tuple[bool, any]:
         """
         Protected method to invoke the device's command
 
@@ -35,7 +35,7 @@ class BaseDeviceCommand(ABC): # pylint: disable=too-few-public-methods
         """
 
     @abstractmethod
-    async def command_send(self):
+    async def send(self):
         """
         Outward facing interface to run command
 

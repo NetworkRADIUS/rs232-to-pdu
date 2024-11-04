@@ -24,10 +24,10 @@ class DummyCmd(BaseDeviceCommand): # pylint: disable=too-few-public-methods
     """
     Empty concrete subclass of the BaseDeviceCommand class
     """
-    async def _command_invoke(self) -> tuple[bool, any]: # pylint: disable=missing-function-docstring, line-too-long
+    async def _invoke(self) -> tuple[bool, any]: # pylint: disable=missing-function-docstring, line-too-long
         return True, None
 
-    async def command_send(self): # pylint: disable=missing-function-docstring
+    async def send(self): # pylint: disable=missing-function-docstring
         return None
 
 
@@ -57,7 +57,7 @@ class TestCmdRunner(unittest.TestCase):
 
         dummy_cmd = DummyCmd(None, '', 1)
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(dummy_cmd)
+            self.cmd_runner.enqueue(dummy_cmd)
         )
 
         # assert that queue size has increased by exactly 1
@@ -72,10 +72,10 @@ class TestCmdRunner(unittest.TestCase):
 
         # place low priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False)
+            self.cmd_runner.enqueue(low_prio_dummy_cmd, False)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True)
+            self.cmd_runner.enqueue(high_prio_dummy_cmd, True)
         )
 
         # .get() returns (priority, item), thus the [1] at the end
@@ -95,10 +95,10 @@ class TestCmdRunner(unittest.TestCase):
 
         # place high priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(high_prio_dummy_cmd, True)
+            self.cmd_runner.enqueue(high_prio_dummy_cmd, True)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(low_prio_dummy_cmd, False)
+            self.cmd_runner.enqueue(low_prio_dummy_cmd, False)
         )
 
         next_cmd_in_queue = self.event_loop.run_until_complete(
@@ -118,12 +118,12 @@ class TestCmdRunner(unittest.TestCase):
 
         # begin listening for new items in queue
         self.event_loop.create_task(
-            self.cmd_runner.queue_processor(self.event_loop)
+            self.cmd_runner.dequeue(self.event_loop)
         )
 
         # put new item into queue
         self.event_loop.run_until_complete(
-            self.cmd_runner.put_into_queue(dummy_cmd)
+            self.cmd_runner.enqueue(dummy_cmd)
         )
 
         self.event_loop.run_until_complete(dummy_sleep(5))
