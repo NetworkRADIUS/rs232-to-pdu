@@ -71,11 +71,9 @@ When using SNMP v3, the user may also choose what security level they desire. Th
 
 ## Logging
 
-This tool supports logging to three destination types: file, syslog, and streams. However, only one type and destination
-is expected. That is, this tool expects to log to exactly one location.
+This tools supports the option of configuring logging output to a file, syslog, or stream. Only one destination may be specified. The destination should be placed under `log.file`, `log.syslog`, or `log.stream`. A single string is expected as the destination.
 
-To configure the log destination, one of `file`, `syslog`, or `stream` must be a key under `log`. The value to this
-key is the log destination.
+If no logging configuration is present, the tool will default to stdout as the destination.
 
 Below are sample configurations.
 
@@ -88,7 +86,7 @@ log:
 
 # Sample 2 : logging to syslog
 log:
-  syslog: 2  # user-level messages facility
+  syslog: user
 
 # Sample 3: logging to stream
 log:
