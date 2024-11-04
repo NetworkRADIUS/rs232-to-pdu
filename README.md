@@ -32,11 +32,11 @@ Healthcheck frequency are configurable in the `config.yaml` file, under `healthc
 
 ---
 
-## Power Options
+## Power States
 
 Maps serial commands, `on`, `of` and optionally `cy` (cycle) to SNMP values set on the OIDs that control outlet states.
 If `cy` is not specified, and a `cy` command is received, the outlet state is set to `of`, followed by a delay of
-`power_options.cy_delay` seconds, then `of`.
+`power_states.cy_delay` seconds, then `of`.
 
 ---
 
@@ -148,7 +148,7 @@ conform the yaml format and have the following sections.
 &emsp;&emsp;&emsp;&emsp;\- ```<port numbers>*```: string value of OID for this port
 &emsp;&emsp;&emsp;\- ```path```: contains path where template files are stored
 
-```power_options```:\
+```power_states```:\
 \- ```cy_delay```: time in seconds between off and on commands
 
 ```banks```:\
@@ -183,7 +183,7 @@ serial:
 healthcheck:
   frequency: 5
 
-power_options:
+power_states:
   cy_delay: 5
 
 snmp:
@@ -209,7 +209,7 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
-    power_options:
+    power_states:
       on: 1
       of: 2
       cy: 3
@@ -221,7 +221,7 @@ devices:
       ip_address: {{ ip_address }}
       port: {{ port }}
     outlets: dev_foo
-    power_options:
+    power_states:
       on: 1
       of: 2
       cy: 3
@@ -237,7 +237,7 @@ devices:
       ip_address: {{ ip_address }}
       port: {{ port }}
     outlets: dev_bar
-    power_options:
+    power_states:
       on: 1
       of: 2
 ```

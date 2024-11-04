@@ -116,31 +116,31 @@ class TestDevice(unittest.TestCase):
         Returns:
 
         """
-        self.device_config['power_options'] = {'of':1, 'on':2, 'cy':3}
+        self.device_config['power_states'] = {'of':1, 'on':2, 'cy':3}
         self.assertIsInstance(
             create_device_from_config_dict('int_all', self.device_config),
             Device
         )
 
-        self.device_config['power_options'] = {'of':1, 'on':2}
+        self.device_config['power_states'] = {'of':1, 'on':2}
         self.assertIsInstance(
             create_device_from_config_dict('int_no_cy', self.device_config),
             Device
         )
 
-        self.device_config['power_options'] = {'of':'1', 'on':'2', 'cy':'3'}
+        self.device_config['power_states'] = {'of':'1', 'on':'2', 'cy':'3'}
         self.assertIsInstance(
             create_device_from_config_dict('str_all', self.device_config),
             Device
         )
 
-        self.device_config['power_options'] = {'of':'1', 'on':'2'}
+        self.device_config['power_states'] = {'of':'1', 'on':'2'}
         self.assertIsInstance(
             create_device_from_config_dict('str_no_cy', self.device_config),
             Device
         )
 
-        self.device_config['power_options'] = {1:'1'}
+        self.device_config['power_states'] = {1:'1'}
         self.assertRaises(
             TypeError,
             create_device_from_config_dict, 'bad_type', self.device_config
