@@ -413,7 +413,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             logger.info(f'Setting Device {device} Outlet {outlet} to '
                         f'{cmd}')
 
-            if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_options:
+            if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_states:
                 self.event_loop.create_task(
                     self.manual_outlet_toggle(
                         self.devices[f'{int(device):03d}'],

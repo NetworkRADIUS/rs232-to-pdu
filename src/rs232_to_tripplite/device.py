@@ -18,7 +18,7 @@ class Device:
 
     def __init__(
             self,
-            name: str, outlets: list[str], power_options: dict[str: any],
+            name: str, outlets: list[str], power_states: dict[str: any],
             transport: Transport
     ):
         """
@@ -26,12 +26,12 @@ class Device:
         Args:
             name: device name
             outlets: list of outlet names
-            power_options: mappings of power options to values
+            power_states: mappings of power options to values
             transport: object for sending requests
         """
         self.name = name
         self.outlets = outlets
-        self.power_options = power_options
+        self.power_states = power_states
         self.transport = transport
 
     async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
@@ -56,12 +56,12 @@ class Device:
         Returns:
             outlet state after sending the request
         """
-        if state not in self.power_options:
+        if state not in self.power_states:
             raise AttributeError(f'Attempting to set device {self.name} '
                                  f'outlet {outlet} to unknown state {state}.')
 
         return await self.transport.set_outlet_state(outlet,
-                                                     self.power_options[state])
+                                                     self.power_states[state])
 
 
 def create_device_from_config_dict(name: str, config_dict: dict) -> Device: # pylint: disable=too-many-locals
@@ -78,11 +78,11 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device: # py
     outlets = config_dict['outlets']
     transport = None  # should be over-writen or exception thrown
 
-    power_options = config_dict['power_options']
-    for option, value in power_options.items():
+    power_states = config_dict['power_states']
+    for option, value in power_states.items():
         if not isinstance(option, str):
             raise TypeError('Power option must be a string')
-        power_options[option] = pysnmp.Integer(value)
+        power_states[option] = pysnmp.Integer(value)
 
     if 'snmp' in config_dict:
         ip_address = config_dict['snmp']['ip_address']
@@ -138,4 +138,4 @@ def create_device_from_config_dict(name: str, config_dict: dict) -> Device: # py
         # raise error if transport is not supported
         raise TypeError(f'Unsupported transport for device {name}')
 
-    return Device(name, list(outlets.keys()), power_options, transport)
+    return Device(name, list(outlets.keys()), power_states, transport)

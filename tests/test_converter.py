@@ -63,7 +63,7 @@ class TestCoverter(unittest.TestCase):
                         '001': '1.1',
                         '002': '1.2'
                     },
-                    'power_options': {
+                    'power_states': {
                         'on': pysnmp.Integer(2),
                         'of': pysnmp.Integer(1),
                         'cy': pysnmp.Integer(3),
@@ -82,7 +82,7 @@ class TestCoverter(unittest.TestCase):
                         '001': '1.1',
                         '002': '1.2'
                     },
-                    'power_options': {
+                    'power_states': {
                         'on': pysnmp.Integer(2),
                         'of': pysnmp.Integer(1)
                     }
@@ -147,7 +147,7 @@ class TestCoverter(unittest.TestCase):
             self.converter.read_serial_conn
         )
 
-    def test_power_options(self):
+    def test_power_states(self):
         """
         Tests end-to-end with power options
         Returns:

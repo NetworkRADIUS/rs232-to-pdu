@@ -5,7 +5,7 @@ serial:
 healthcheck:
   frequency: 5
 
-power_options:
+power_states:
   cy_delay: 5
 
 snmp:
@@ -25,7 +25,7 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
-    power_options:
+    power_states:
       on: 1
       of: 2
       cy: 3
@@ -39,7 +39,7 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
-    power_options:
+    power_states:
       on: 1
       of: 2
       cy: 3
@@ -57,6 +57,6 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
-    power_options:
+    power_states:
       on: 1
       of: 2
