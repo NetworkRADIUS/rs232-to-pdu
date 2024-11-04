@@ -14,35 +14,35 @@ class TransportSnmp(Transport):
     and retrievals
     """
 
-    def __init__(self, outlet_oids: dict[str: str], version: int, # pylint: disable=too-many-arguments
+    def __init__(self, oids: dict[str: str], version: int,  # pylint: disable=too-many-arguments
                  read_auth: CommunityData | UsmUserData,
                  write_auth: CommunityData | UsmUserData,
                  ip_address: str, port: int):
         """
 
         Args:
-            outlet_oids: mappings between outlet names and OIDs
+            oids: mappings between outlet names and OIDs
             version: SNMP version
             read_auth: session data for sending a read-only command
             write_auth: session data for sending a read-write command
             ip_address: SNMP agent's IP address
             port: SNMP agent's port
         """
-        super().__init__(outlet_oids.keys())
+        super().__init__(oids.keys())
 
         # convert string representation of OIDs to pysnmp data structures
         self.oids = {}
-        for outlet, oid in outlet_oids.items():
+        for outlet, oid in oids.items():
             self.oids[outlet] = pysnmp.ObjectIdentity(oid)
 
         self.version = version
 
         # sets up session data
-        self.session_engine = pysnmp.SnmpEngine()
-        self.session_read_auth = read_auth
-        self.session_write_auth = write_auth
-        self.session_target = pysnmp.UdpTransportTarget((ip_address, port))
-        self.session_context = pysnmp.ContextData()
+        self.engine = pysnmp.SnmpEngine()
+        self.read_auth = read_auth
+        self.write_auth = write_auth
+        self.target = pysnmp.UdpTransportTarget((ip_address, port))
+        self.context = pysnmp.ContextData()
 
     async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
         """
@@ -56,10 +56,10 @@ class TransportSnmp(Transport):
 
         # Uses read-only authentication to perform GET commands
         err_indicator, err_status, err_index, var_binds = await pysnmp.getCmd(
-            self.session_engine,
-            self.session_read_auth,
-            self.session_target,
-            self.session_context,
+            self.engine,
+            self.read_auth,
+            self.target,
+            self.context,
             pysnmp.ObjectType(self.oids[outlet])
         )
 
@@ -81,10 +81,10 @@ class TransportSnmp(Transport):
 
         # Uses read-write authentication to perform SET commands
         err_indicator, err_status, err_index, var_binds = await pysnmp.setCmd(
-            self.session_engine,
-            self.session_write_auth,
-            self.session_target,
-            self.session_context,
+            self.engine,
+            self.write_auth,
+            self.target,
+            self.context,
             pysnmp.ObjectType(self.oids[outlet],
                               state)
         )
@@ -98,26 +98,26 @@ class TransportSnmpV1V2(TransportSnmp):
     Class representing the use of SNMP v1 or v2 as transport
     """
 
-    def __init__(self, outlet_oids: dict[str: any], version: int, # pylint: disable=too-many-arguments
+    def __init__(self, oids: dict[str: any], version: int,  # pylint: disable=too-many-arguments
                  ip_address: str, port: int,
-                 public_community: str, private_community: str):
+                 public: str, private: str):
         """
 
         Args:
-            outlet_oids: mappings between outlet names and OIDs
+            oids: mappings between outlet names and OIDs
             version: SNMP version
             ip_address: SNMP agent's IP address
             port: SNMP agent's port
-            public_community: name of read-only community
-            private_community: name of read-write community
+            public: name of read-only community
+            private: name of read-write community
         """
 
         # uses public and private communities as read-only and read-write
         super().__init__(
-            outlet_oids, version,
-            pysnmp.CommunityData(public_community,
+            oids, version,
+            pysnmp.CommunityData(public,
                                  mpModel=0 if version == 1 else 1),
-            pysnmp.CommunityData(private_community,
+            pysnmp.CommunityData(private,
                                  mpModel=0 if version == 1 else 1),
             ip_address, port)
 
@@ -127,7 +127,7 @@ class TransportSnmpV3(TransportSnmp):
     class representing the use of SNMP v3 as transport
     """
 
-    def __init__(self, outlet_oids: dict[str: str], version: int, # pylint: disable=too-many-arguments
+    def __init__(self, oids: dict[str: str], version: int,  # pylint: disable=too-many-arguments
                  ip_address: str, port: int,
                  user: str, auth_protocol: str, auth_passphrase: str,
                  priv_protocol: str, priv_passphrase: str,
@@ -135,7 +135,7 @@ class TransportSnmpV3(TransportSnmp):
         """
 
         Args:
-            outlet_oids: mappings between outlet names and OIDs
+            oids: mappings between outlet names and OIDs
             version: SNMP version
             ip_address: SNMP agent's IP address
             port: SNMP agent's port
@@ -177,7 +177,7 @@ class TransportSnmpV3(TransportSnmp):
 
         # use user model as both read-only and read-write access
         super().__init__(
-            outlet_oids, version,
+            oids, version,
             user_auth_obj, user_auth_obj,
             ip_address, port
         )

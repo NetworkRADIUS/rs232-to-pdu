@@ -64,7 +64,7 @@ class Device:
                                                      self.power_states[state])
 
 
-def create_device_from_config_dict(name: str, config_dict: dict) -> Device: # pylint: disable=too-many-locals
+def device_from_config(name: str, config_dict: dict) -> Device: # pylint: disable=too-many-locals
     """
     Factory function for creating a Device instance from a config dict
 

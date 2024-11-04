@@ -17,14 +17,14 @@ from watchdog.observers import Observer
 
 import rs232_to_tripplite.logfactory as nrlogfac
 from rs232_to_tripplite.commands.base import BaseDeviceCommand
-from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
-                                                 SetCommandWithRetry)
-from rs232_to_tripplite.device import create_device_from_config_dict, Device
+from rs232_to_tripplite.commands.retries import (CommandRetryGet,
+                                                 CommandRetrySet)
+from rs232_to_tripplite.device import device_from_config, Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
 # Set up logger for this module
-nrlogfac.setup_logging()
+nrlogfac.setup()
 logger = nrlogfac.create_logger(__name__)
 
 
@@ -41,9 +41,9 @@ class DeviceCmdRunner:
         # priority of new items
         self.prio_counter = 0
 
-    async def put_into_queue(self,
-                             device_cmd: BaseDeviceCommand,
-                             high_prio: bool = False) -> None:
+    async def enqueue(self,
+                      device_cmd: BaseDeviceCommand,
+                      high_prio: bool = False) -> None:
         """
         Puts an command item into the queue.
 
@@ -62,7 +62,7 @@ class DeviceCmdRunner:
         # puts item into queue
         await self.queue.put((priority, device_cmd))
 
-    async def queue_processor(self, event_loop: asyncio.AbstractEventLoop):
+    async def dequeue(self, event_loop: asyncio.AbstractEventLoop):
         """
         Gets top priority item from queue and runs the command
 
@@ -78,7 +78,7 @@ class DeviceCmdRunner:
             # Will not grab next item until the previous command has been
             # completed
             _, device_cmd = await self.queue.get()
-            await device_cmd.command_send()
+            await device_cmd.send()
 
 class LookForFileEH(FileSystemEventHandler):
     """
@@ -145,7 +145,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
 
         self.devices: dict[str: Device] = {}
         for device_name in device_config.keys():
-            self.devices[device_name] = create_device_from_config_dict(
+            self.devices[device_name] = device_from_config(
                 device_name, device_config[device_name]
             )
 
@@ -196,7 +196,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         self.serial_conn.close()
         self.sysdwd.status('Serial port closed')
 
-    def attempt_reconnect(self):
+    def serial_conn_reconnect(self):
         """
         Attempts to reconnect the serial port
 
@@ -225,7 +225,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self.serial_conn_close()
 
             self.jobs['reconnect'] = self.scheduler.add_job(
-                self.attempt_reconnect, 'interval', seconds=5
+                self.serial_conn_reconnect, 'interval', seconds=5
             )
 
             watch_path = '/'.join(
@@ -234,7 +234,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self.file_watchdog = Observer()
             self.file_watchdog.schedule(
                 LookForFileEH(self.serial_device,
-                              self.attempt_reconnect
+                              self.serial_conn_reconnect
                               ),
                 watch_path
             )
@@ -251,8 +251,8 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         for _, device in self.devices.items():
             self.cmd_counter += 1
             self.event_loop.create_task(
-                self.device_cmd_runner.put_into_queue(
-                    GetCommandWithRetry(
+                self.device_cmd_runner.enqueue(
+                    CommandRetryGet(
                         device,
                         # always check the first outlet
                         device.outlets[0],
@@ -279,8 +279,8 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         """
         self.cmd_counter += 1
         self.event_loop.create_task(
-            self.device_cmd_runner.put_into_queue(
-                SetCommandWithRetry(
+            self.device_cmd_runner.enqueue(
+                CommandRetrySet(
                     device, outlet, state,
                     self.retry['timeout'], self.retry['max_attempts'],
                     self.retry['delay'],
@@ -321,7 +321,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         self.event_loop.add_reader(self.serial_conn, self.serial_conn_read)
 
         self.event_loop.create_task(
-            self.device_cmd_runner.queue_processor(self.event_loop)
+            self.device_cmd_runner.dequeue(self.event_loop)
         )
         self.event_loop.set_exception_handler(self.serial_error_handler)
 
