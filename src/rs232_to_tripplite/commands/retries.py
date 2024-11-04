@@ -38,7 +38,7 @@ class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-argu
         self.max_attempts = max_attempts
         self.delay = delay
 
-    async def send_command(self):
+    async def command_send(self):
         """
         outward facing interface to run command
 
@@ -48,33 +48,33 @@ class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-argu
         for __attempt in range(self.max_attempts):
             try:
                 async with asyncio.timeout(self.timeout):
-                    success, result = await self._invoke_device_command()
+                    success, result = await self._command_invoke()
 
                 if success:
-                    self.cmd_success_handler(result)
+                    self.handler_cmd_success(result)
                     return True
-                self.cmd_failure_handler(result)
+                self.handler_cmd_failure(result)
 
             except TimeoutError:
-                self.cmd_timeout_handler()
+                self.handler_cmd_timeout()
 
-        self.max_attempts_reached_handler()
+        self.handler_max_attempts()
         return False
 
     @abstractmethod
-    def cmd_success_handler(self, result): # pylint: disable=missing-function-docstring
+    def handler_cmd_success(self, result): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
-    def cmd_failure_handler(self, result): # pylint: disable=missing-function-docstring
+    def handler_cmd_failure(self, result): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
-    def cmd_timeout_handler(self): # pylint: disable=missing-function-docstring
+    def handler_cmd_timeout(self): # pylint: disable=missing-function-docstring
         ...
 
     @abstractmethod
-    def max_attempts_reached_handler(self): # pylint: disable=missing-function-docstring
+    def handler_max_attempts(self): # pylint: disable=missing-function-docstring
         ...
 
 
@@ -83,24 +83,24 @@ class GetCommandWithRetry(CommandWithRetry):
     class representing a UDP command that is retrieving the state of an outlet
     """
 
-    async def _invoke_device_command(self) -> tuple[bool, any]:
-        return await self.device.get_outlet_state(self.outlet)
+    async def _command_invoke(self) -> tuple[bool, any]:
+        return await self.device.outlet_state_get(self.outlet)
 
-    def cmd_success_handler(self, result):
+    def handler_cmd_success(self, result):
         logger.info(f'Command #{self._id} passed when sending GET command to '
                     f'outlet {self.outlet} on device {self.device.name}.')
 
-    def cmd_failure_handler(self, result):
+    def handler_cmd_failure(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send GET'
                      f'command to outlet {self.outlet} on device '
                      f'{self.device.name}. Command result: {result}')
 
-    def cmd_timeout_handler(self):
+    def handler_cmd_timeout(self):
         logger.error(f'Command #{self._id} timed out when attempting to send '
                      f'GET command to outlet {self.outlet} on device '
                      f'{self.device.name}.')
 
-    def max_attempts_reached_handler(self):
+    def handler_max_attempts(self):
         logger.error(f'Command #{self._id} has reached maximum number of '
                      f'retries when attempting to send GET command to outlet '
                      f'{self.outlet} on device {self.device.name}.')
@@ -130,26 +130,26 @@ class SetCommandWithRetry(CommandWithRetry):
 
         self.state = state
 
-    async def _invoke_device_command(self) -> tuple[bool, any]:
-        return await self.device.set_outlet_state(self.outlet, self.state)
+    async def _command_invoke(self) -> tuple[bool, any]:
+        return await self.device.outlet_state_set(self.outlet, self.state)
 
-    def cmd_success_handler(self, result):
+    def handler_cmd_success(self, result):
         logger.info(f'Command #{self._id} passed when sending SET command to '
                     f'outlet {self.outlet} on device {self.device.name} with '
                     f'state of {self.state}.')
 
-    def cmd_failure_handler(self, result):
+    def handler_cmd_failure(self, result):
         logger.error(f'Command #{self._id} failed when attempting to send SET'
                      f'command to outlet {self.outlet} on device '
                      f'{self.device.name} with state {self.state}. Command '
                      f'result: {result}')
 
-    def cmd_timeout_handler(self):
+    def handler_cmd_timeout(self):
         logger.error(f'Command #{self._id} timed out when attempting to send '
                      f'SET command to outlet {self.outlet} on device '
                      f'{self.device.name} with state {self.state}.')
 
-    def max_attempts_reached_handler(self):
+    def handler_max_attempts(self):
         logger.error(f'Command #{self._id} has reached maximum number of '
                      f'retries when attempting to send SET command to outlet '
                      f'{self.outlet} on device {self.device.name} with state '

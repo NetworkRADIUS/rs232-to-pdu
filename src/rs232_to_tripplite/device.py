@@ -39,7 +39,7 @@ class Device:
         self.power_states = power_states
         self.transport = transport
 
-    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
+    async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
         """
         method for retrieving an outlet's state using the transport
         Args:
@@ -48,9 +48,9 @@ class Device:
         Returns:
             outlet state
         """
-        return await self.transport.get_outlet_state(outlet)
+        return await self.transport.outlet_state_get(outlet)
 
-    async def set_outlet_state(self, outlet: str, state: str) -> tuple[
+    async def outlet_state_set(self, outlet: str, state: str) -> tuple[
         bool, any]:
         """
         method for setting an outlet's state using the transport'
@@ -65,7 +65,7 @@ class Device:
             raise AttributeError(f'Attempting to set device {self.name} '
                                  f'outlet {outlet} to unknown state {state}.')
 
-        return await self.transport.set_outlet_state(outlet,
+        return await self.transport.outlet_state_set(outlet,
                                                      self.power_states[state])
 
 

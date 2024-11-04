@@ -44,7 +44,7 @@ class TransportSnmp(Transport):
         self.session_target = pysnmp.UdpTransportTarget((ip_address, port))
         self.session_context = pysnmp.ContextData()
 
-    async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
+    async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
         """
         Sends GET command to get outlet state
         Args:
@@ -66,7 +66,7 @@ class TransportSnmp(Transport):
         return (not (err_indicator or err_status),
                 (err_indicator, err_status, err_index, var_binds))
 
-    async def set_outlet_state(
+    async def outlet_state_set(
             self, outlet: str, state: any
     ) -> tuple[bool, any]:
         """

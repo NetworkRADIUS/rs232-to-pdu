@@ -24,10 +24,10 @@ class DummyCmd(BaseDeviceCommand): # pylint: disable=too-few-public-methods
     """
     Empty concrete subclass of the BaseDeviceCommand class
     """
-    async def _invoke_device_command(self) -> tuple[bool, any]: # pylint: disable=missing-function-docstring, line-too-long
+    async def _command_invoke(self) -> tuple[bool, any]: # pylint: disable=missing-function-docstring, line-too-long
         return True, None
 
-    async def send_command(self): # pylint: disable=missing-function-docstring
+    async def command_send(self): # pylint: disable=missing-function-docstring
         return None
 
 

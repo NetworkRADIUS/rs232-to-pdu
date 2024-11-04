@@ -52,52 +52,52 @@ class TestSnmpTransport(unittest.TestCase):
         mock_get_cmd.return_value = (None, None, None, None)
 
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('001')),
+            asyncio.run(self.v1v2_device.outlet_state_get('001')),
             (True, (None, None, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('002')),
+            asyncio.run(self.v1v2_device.outlet_state_get('002')),
             (True, (None, None, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.get_outlet_state('004')
+            asyncio.run, self.v1v2_device.outlet_state_get('004')
         )
 
         # Mock SNMP engine error
         mock_get_cmd.return_value = (True, None, None, None)
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('001')),
+            asyncio.run(self.v1v2_device.outlet_state_get('001')),
             (False, (True, None, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('002')),
+            asyncio.run(self.v1v2_device.outlet_state_get('002')),
             (False, (True, None, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.get_outlet_state('004')
+            asyncio.run, self.v1v2_device.outlet_state_get('004')
         )
 
         # Mock SNMP PDU error
         mock_get_cmd.return_value = (None, True, None, None)
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('001')),
+            asyncio.run(self.v1v2_device.outlet_state_get('001')),
             (False, (None, True, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.get_outlet_state('002')),
+            asyncio.run(self.v1v2_device.outlet_state_get('002')),
             (False, (None, True, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.get_outlet_state('004')
+            asyncio.run, self.v1v2_device.outlet_state_get('004')
         )
 
     @mock.patch("pysnmp.hlapi.asyncio.setCmd")
@@ -114,50 +114,50 @@ class TestSnmpTransport(unittest.TestCase):
         mock_set_cmd.return_value = (None, None, None, None)
 
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('001', 'on')),
             (True, (None, None, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('002', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('002', 'on')),
             (True, (None, None, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.set_outlet_state('004', 'on')
+            asyncio.run, self.v1v2_device.outlet_state_set('004', 'on')
         )
 
         # Mock SNMP engine error
         mock_set_cmd.return_value = (True, None, None, None)
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('001', 'on')),
             (False, (True, None, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('002', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('002', 'on')),
             (False, (True, None, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.set_outlet_state('004', 'on')
+            asyncio.run, self.v1v2_device.outlet_state_set('004', 'on')
         )
 
         # Mock SNMP PDU error
         mock_set_cmd.return_value = (None, True, None, None)
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('001', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('001', 'on')),
             (False, (None, True, None, None))
         )
         self.assertEqual(
-            asyncio.run(self.v1v2_device.set_outlet_state('002', 'on')),
+            asyncio.run(self.v1v2_device.outlet_state_set('002', 'on')),
             (False, (None, True, None, None))
         )
 
         # Non-existent outlet
         self.assertRaises(
             KeyError,
-            asyncio.run, self.v1v2_device.set_outlet_state('004', 'on')
+            asyncio.run, self.v1v2_device.outlet_state_set('004', 'on')
         )
