@@ -34,11 +34,10 @@ Healthcheck frequency are configurable in the `config.yaml` file, under `healthc
 
 ## Power Options
 
-For each device, a list of power options (`devices.<id>.power_options`) are expected. At the minimum, a `on` and `of` options must be supplied with
-their corresponding state values. If the device supports it, a `cy` option should also be supplied to perform a power
-toggle (off then on). If no `cy` option is given, but a `cy` command is inputted, the tool with perform a manual toggle,
-involving turning the outlet off, then on, with a configurable delay. This configurable delay is stored under 
-`power_options.cy_delay`. This value is a global and applies to all devices.
+Maps serial commands, `on`, `of` and optionally `cy` (cycle) to SNMP values set on the OIDs that control outlet states.
+If `cy` is not specified, and a `cy` command is received, the outlet state is set to `of`, followed by a delay of
+`power_options.cy_delay` seconds, then `of`.
+
 ---
 
 ## SNMP Command Buffering
