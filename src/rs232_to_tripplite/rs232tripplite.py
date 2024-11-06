@@ -20,7 +20,7 @@ import rs232_to_tripplite.logfactory as nrlogfac
 from rs232_to_tripplite.commands.base import BaseDeviceCommand
 from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
                                                  SetCommandWithRetry)
-from rs232_to_tripplite.device import create_device_from_config_dict, Device
+from rs232_to_tripplite.device import Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
@@ -108,7 +108,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             self,
             serial_device: str, serial_timeout: int,
             max_attempts: int, delay: int, cmd_timeout: int,
-            device_config: dict, healthcheck_frequency: int ):
+            devices: dict[str: Device], healthcheck_frequency: int ):
         """
 
         Args:
@@ -117,7 +117,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             max_attempts: maximum number of attempts for a command
             delay: delay between command retries
             cmd_timeout: timeout in seconds for a command
-            device_config: dictionary containing config data for devices
+            devices: dictionary containing names to devices
             healthcheck_frequency: frequency of a healthcheck
         """
         # Initialize parser and command issuer
@@ -147,11 +147,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             'timeout': cmd_timeout
         }
 
-        self.devices: dict[str: Device] = {}
-        for device_name in device_config.keys():
-            self.devices[device_name] = create_device_from_config_dict(
-                device_name, device_config[device_name]
-            )
+        self.devices: dict[str: Device] = devices
 
         self.cmd_counter = 0
 

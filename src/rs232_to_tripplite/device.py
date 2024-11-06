@@ -3,10 +3,15 @@ Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
 """
+import os
+import pathlib
+import re
+
+import yaml
 
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
-    TransportSnmpV3
+    TransportSnmpV3, TransportSnmp
 
 
 class Device:
@@ -54,72 +59,160 @@ class Device:
         return await self.transport.set_outlet_state(outlet, state)
 
 
-def create_device_from_config_dict(name: str, config_dict: dict) -> Device:
+def snmp_transport_from_dict(configs: dict, outlets: dict) -> TransportSnmp:  # pylint: disable=too-many-locals
     """
-    Factory function for creating a Device instance from a config dict
+    creates TransportSnmp object from dictionary
 
     Args:
-        name: string representation of device name
-        config_dict: dictionary containing configs for a device
+        configs: config dict
+        outlets: mapping of outlet name to OID
 
     Returns:
-        Device instance
+        TransportSnmp object
     """
-    outlets = config_dict['outlets']
-    transport = None  # should be over-writen or exception thrown
+    transport = None
 
-    if 'snmp' in config_dict:
-        ip_address = config_dict['snmp']['ip_address']
-        port = config_dict['snmp']['port']
+    ip_address = configs['ip_address']
+    port = configs['port']
 
-        if 'v1' in config_dict['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v2' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
-            public_community = config_dict['snmp']['v1']['public_community']
-            private_community = config_dict['snmp']['v1']['private_community']
+    versions = {
+        'v1': 1,
+        'v2': 2,
+        'v3': 3
+    }
 
-            transport = TransportSnmpV1V2(
-                outlets, 1, ip_address, port,
-                public_community, private_community
-            )
+    for version, vnum in versions.items():
+        if version in configs:
+            # if transport has already been over-writen, multiple schemes have
+            # been listed
+            if transport is not None:
+                raise ValueError('Multiple SNMP authentication schemes found')
 
-        elif 'v2' in config_dict['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v1' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
-            public_community = config_dict['snmp']['v2']['public_community']
-            private_community = config_dict['snmp']['v2']['private_community']
+            match version:
+                # both v1 and v2 use communities, thus combine them
+                case 'v1' | 'v2':
+                    public_community = configs[version]['public_community']
+                    private_community = configs[version]['private_community']
 
-            transport = TransportSnmpV1V2(
-                outlets, 2, ip_address, port,
-                public_community, private_community
-            )
+                    transport = TransportSnmpV1V2(
+                        outlets, vnum, ip_address, port,
+                        public_community, private_community
+                    )
+                case 'v3':
+                    user = configs['v3']['user']
+                    auth_protocol = configs['v3']['auth_protocol']
+                    auth_passphrase = configs['v3']['auth_passphrase']
+                    priv_protocol = configs['v3']['priv_protocol']
+                    priv_passphrase = configs['v3']['priv_passphrase']
+                    security_level = configs['v3']['security_level']
 
-        elif 'v3' in config_dict['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v1' in config_dict['snmp'] or 'v2' in config_dict['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
+                    transport = TransportSnmpV3(
+                        outlets, vnum, ip_address, port,
+                        user, auth_protocol, auth_passphrase,
+                        priv_protocol, priv_passphrase,
+                        security_level
+                    )
 
-            user = config_dict['snmp']['v3']['user']
-            auth_protocol = config_dict['snmp']['v3']['auth_protocol']
-            auth_passphrase = config_dict['snmp']['v3']['auth_passphrase']
-            priv_protocol = config_dict['snmp']['v3']['priv_protocol']
-            priv_passphrase = config_dict['snmp']['v3']['priv_passphrase']
-            security_level = config_dict['snmp']['v3']['security_level']
-
-            transport = TransportSnmpV3(
-                outlets, 3, ip_address, port,
-                user, auth_protocol, auth_passphrase,
-                priv_protocol, priv_passphrase,
-                security_level
-            )
-
+    # either no version found or version not supported
     if transport is None:
-        # raise error if transport is not supported
-        raise TypeError(f'Unsupported transport for device {name}')
+        raise AttributeError('Unsupported SNMP authentication schemes')
 
-    return Device(name, list(outlets.keys()), transport)
+    return transport
+
+class FactoryDevice:  # pylint: disable=too-few-public-methods
+    """
+    Factory class for creating Device objects
+    """
+    def __init__(self):
+        self.transport_handlers = {
+            'snmp': snmp_transport_from_dict
+        }
+
+        self.name_pattern = re.compile(r'^[a-zA-Z0-9]+([-,_][a-zA-Z0-9]+)*$')
+
+        self.configs = None
+
+        # attribute holding the current device's transport
+        # used when iterating through all the devices in the config
+        self.curr_device_transport = None
+
+    def __template_from_config(self, device: str) -> dict:
+        """
+        finds template for given device name
+
+        Args:
+            device: device name in string
+
+        Returns:
+            dictionary containing template outlets
+        """
+        if device in self.configs[self.curr_device_transport]['devices']['custom']:
+            return self.configs[self.curr_device_transport]['devices']['custom'][device]
+
+        template_path = pathlib.Path(
+            self.configs[self.curr_device_transport]['devices']['path'], f'{device}.yaml'
+        )
+        if os.path.exists(template_path):
+            with open(template_path, 'r', encoding='utf-8') as file:
+                return yaml.load(file, Loader=yaml.FullLoader)
+
+        raise ValueError(
+            f'No template found for device {device} with transport '
+            f'{self.curr_device_transport}')
+
+    def devices_from_full_config(self, configs: dict) -> dict[str: Device]:
+        """
+        creates dict of Device objects from config
+
+        Args:
+            configs: dict containing configs
+
+        Returns:
+            mapping of name (str) to Device objects
+        """
+        self.configs = configs
+
+        devices = {}
+        for name, device in configs['devices'].items():
+            devices[name] = self.__device_from_device_config(name, device)
+
+        return devices
+
+    def __sanitized(self, name):
+        return self.name_pattern.match(name)
+
+    def __device_from_device_config(self, name: str , configs: dict) -> Device:
+        """
+        creates a single Device object from config
+        Args:
+            name: name of device
+            configs: config for single device
+
+        Returns:
+            Device object
+        """
+        self.curr_device_transport = None
+
+        # read and store the transport for the device
+        for transport in self.transport_handlers:
+            if transport in configs:
+                self.curr_device_transport = transport
+        if self.curr_device_transport is None:
+            raise ValueError(f'Missing or unsupported transport is device '
+                             f'{name}')
+
+        outlets = configs['outlets']
+
+        # get template if needed
+        if isinstance(outlets, str):
+            if not self.__sanitized(outlets):
+                raise ValueError(f'Illegal device template name for device '
+                                 f'{name}')
+            outlets = self.__template_from_config(outlets)
+
+        return Device(
+            name, list(outlets.keys()),
+            self.transport_handlers[self.curr_device_transport](
+                configs[self.curr_device_transport], outlets
+            )
+        )

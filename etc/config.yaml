@@ -10,6 +10,12 @@ snmp:
     max_attempts: 3
     delay: 5
     timeout: 5
+  devices:
+    custom:
+      dev_foo:
+        '001': {{ oid }}
+        '002': {{ oid }}
+    path: {{ template_path_snmp }}
 
 devices:
   '001':
@@ -29,9 +35,7 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-    outlets:
-      '001': {{ oid }}
-      '002': {{ oid }}
+    outlets: dev_foo
   '003':
     snmp:
       v3:
@@ -43,6 +47,4 @@ devices:
         security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-    outlets:
-      '001': {{ oid }}
-      '002': {{ oid }}
+    outlets: dev_bar

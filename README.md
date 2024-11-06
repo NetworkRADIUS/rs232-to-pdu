@@ -61,6 +61,62 @@ When using SNMP v3, the user may also choose what security level they desire. Th
 
 ---
 
+## Device Templates
+
+To use a template, `devices.<id>.outlets` should contain the name of the template (as a string).
+
+Templates will be searched for at `<transport>.devices.custom.<template_name>`. If no such template is found, the file called `<template_name>.yaml` placed under the path described by `<transport>.devices.custom.path` will be searched for. This file should contain a template.
+
+Template names must follow the following BNF grammar:
+```
+<name>   ::= <string> (("-" | "_") <string>)*
+<string> ::= ([A-Z] | [a-z] | [0-9])+
+```
+
+Below are sample configurations:
+
+Sample 1: Placing template in `config.yaml`
+
+```yaml
+# config.yaml
+snmp:
+  devices:
+    custom:
+      foo:
+        '001': '1.3.6.1'
+        '002': '1.3.6.2'
+
+devices:
+  '001':
+    'snmp':
+      outlets: foo  # will find the outlet state values above
+      ...
+```
+
+Sample 2: Placing template in separate file
+
+```yaml
+# config.yaml
+snmp:
+  devices:
+    custom:
+      bar:
+        ...
+    path: /etc/rs232totripplite/templates
+
+devices:
+  '001':
+    'snmp':
+      outlets: foo  # will find the outlet state values in file below
+      ...
+
+# /etc/rs232totripplite/templates/foo.yaml
+'001': '1.3.6.1'
+'002': '1.3.6.2'
+```
+
+---
+
 ## Config Format
 
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
@@ -77,7 +133,12 @@ conform the yaml format and have the following sections.
 \- ```retry```:\
 &emsp;\- ```max_attempts```: integer value of maximum attempts allowed for an SNMP command\
 &emsp;\- ```delay```: time in seconds to wait between SNMP command retries\
-&emsp;\- ```timeout```: time in seconds before timing out SNMP commands
+&emsp;\- ```timeout```: time in seconds before timing out SNMP commands\
+&emsp;\- ```devices```:\
+&emsp;&emsp;\- ```custom```:\
+&emsp;&emsp;&emsp;\- ```foo```: contains snmp outlet state values for template called foo\
+&emsp;&emsp;&emsp;&emsp;\- ```<port numbers>*```: string value of OID for this port
+&emsp;&emsp;&emsp;\- ```path```: contains path where template files are stored
 
 ```banks```:\
 \- ```<bank number>*```\
@@ -94,8 +155,8 @@ conform the yaml format and have the following sections.
 &emsp;&emsp;&emsp; \- ```security_level```: ```noAuthNoPriv``` | ```authNoPriv``` | ```authPriv```\
 &emsp;&emsp; \- ```ip_address```: string value of IP address of SNMP agent\
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
-&emsp;&emsp; \- ```outlets```:\
-&emsp;&emsp;&emsp; \- ```<port number>*```: string value of OID for this port
+&emsp; \- ```outlets```:\
+&emsp;&emsp; \- ```<port number>*```: string value of OID for this port
 
 ### Sample Config
 
@@ -112,6 +173,12 @@ snmp:
     max_attempts: 3
     delay: 5
     timeout: 5
+  devices:
+    custom:
+      dev_foo:
+        '001': {{ oid }}
+        '002': {{ oid }}
+    path: {{ template_path_snmp }}
 
 devices:
   '001':
@@ -121,9 +188,9 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets:
+      '001': {{ oid }}
+      '002': {{ oid }}
   '002':
     snmp:
       v2:
@@ -131,9 +198,7 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets: dev_foo
   '003':
     snmp:
       v3:
@@ -145,7 +210,5 @@ devices:
         security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets: dev_bar
 ```
