@@ -64,68 +64,68 @@ class Device:
                                                      self.power_states[state])
 
 
-def device_from_config(name: str, config_dict: dict) -> Device: # pylint: disable=too-many-locals
+def device_from_config(name: str, config: dict) -> Device: # pylint: disable=too-many-locals
     """
     Factory function for creating a Device instance from a config dict
 
     Args:
         name: string representation of device name
-        config_dict: dictionary containing configs for a device
+        config: dictionary containing configs for a device
 
     Returns:
         Device instance
     """
-    outlets = config_dict['outlets']
+    outlets = config['outlets']
     transport = None  # should be over-writen or exception thrown
 
-    power_states = config_dict['power_states']
+    power_states = config['power_states']
     for option, value in power_states.items():
         if not isinstance(option, str):
             raise TypeError('Power option must be a string')
         power_states[option] = pysnmp.Integer(value)
 
-    if 'snmp' in config_dict:
-        ip_address = config_dict['snmp']['ip_address']
-        port = config_dict['snmp']['port']
+    if 'snmp' in config:
+        ip_address = config['snmp']['ip_address']
+        port = config['snmp']['port']
 
-        if 'v1' in config_dict['snmp']:
+        if 'v1' in config['snmp']:
             # ensure only 1 SNMP version is present
-            if 'v2' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
+            if 'v2' in config['snmp'] or 'v3' in config['snmp']:
                 raise AttributeError(f'Device {name} contains multiple SNMP '
                                      f'authentication schemes')
-            public_community = config_dict['snmp']['v1']['public_community']
-            private_community = config_dict['snmp']['v1']['private_community']
+            public_community = config['snmp']['v1']['public_community']
+            private_community = config['snmp']['v1']['private_community']
 
             transport = TransportSnmpV1V2(
                 outlets, 1, ip_address, port,
                 public_community, private_community
             )
 
-        elif 'v2' in config_dict['snmp']:
+        elif 'v2' in config['snmp']:
             # ensure only 1 SNMP version is present
-            if 'v1' in config_dict['snmp'] or 'v3' in config_dict['snmp']:
+            if 'v1' in config['snmp'] or 'v3' in config['snmp']:
                 raise AttributeError(f'Device {name} contains multiple SNMP '
                                      f'authentication schemes')
-            public_community = config_dict['snmp']['v2']['public_community']
-            private_community = config_dict['snmp']['v2']['private_community']
+            public_community = config['snmp']['v2']['public_community']
+            private_community = config['snmp']['v2']['private_community']
 
             transport = TransportSnmpV1V2(
                 outlets, 2, ip_address, port,
                 public_community, private_community
             )
 
-        elif 'v3' in config_dict['snmp']:
+        elif 'v3' in config['snmp']:
             # ensure only 1 SNMP version is present
-            if 'v1' in config_dict['snmp'] or 'v2' in config_dict['snmp']:
+            if 'v1' in config['snmp'] or 'v2' in config['snmp']:
                 raise AttributeError(f'Device {name} contains multiple SNMP '
                                      f'authentication schemes')
 
-            user = config_dict['snmp']['v3']['user']
-            auth_protocol = config_dict['snmp']['v3']['auth_protocol']
-            auth_passphrase = config_dict['snmp']['v3']['auth_passphrase']
-            priv_protocol = config_dict['snmp']['v3']['priv_protocol']
-            priv_passphrase = config_dict['snmp']['v3']['priv_passphrase']
-            security_level = config_dict['snmp']['v3']['security_level']
+            user = config['snmp']['v3']['user']
+            auth_protocol = config['snmp']['v3']['auth_protocol']
+            auth_passphrase = config['snmp']['v3']['auth_passphrase']
+            priv_protocol = config['snmp']['v3']['priv_protocol']
+            priv_passphrase = config['snmp']['v3']['priv_passphrase']
+            security_level = config['snmp']['v3']['security_level']
 
             transport = TransportSnmpV3(
                 outlets, 3, ip_address, port,
