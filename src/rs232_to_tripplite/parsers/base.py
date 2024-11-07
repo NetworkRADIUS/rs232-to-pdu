@@ -4,10 +4,10 @@ Contains the base parser class that contains important parsing functions
 Author: Patrick Guo
 Date: 2024-08-13
 """
-import rs232_to_tripplite.logfactory as nrlogfac
+import rs232_to_tripplite.logfactory as logfac
 
 # Set up logger for this module
-logger = nrlogfac.create_logger(__name__)
+logger = logfac.create_logger(__name__)
 
 
 class ParseError(Exception):

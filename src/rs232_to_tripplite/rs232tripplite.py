@@ -16,7 +16,7 @@ from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-import rs232_to_tripplite.logfactory as nrlogfac
+import rs232_to_tripplite.logfactory as logfac
 from rs232_to_tripplite.commands.base import BaseDeviceCommand
 from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
                                                  SetCommandWithRetry)
@@ -25,7 +25,7 @@ from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
 # Set up logger for this module
-logger = nrlogfac.create_logger(__name__)
+logger = logfac.create_logger(__name__)
 
 POWERBAR_VALUES = {
     'on': pysnmp.Integer(2),

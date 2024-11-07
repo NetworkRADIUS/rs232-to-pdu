@@ -20,21 +20,21 @@ class ReprFormatter(logging.Formatter):
         return super().format(record)
 
 
-def get_file_handler(dest): # pylint: disable=missing-function-docstring
+def handler_file(dest): # pylint: disable=missing-function-docstring
     return logging.FileHandler(dest)
 
-def get_syslog_handler(dest): # pylint: disable=missing-function-docstring
+def handler_syslog(dest): # pylint: disable=missing-function-docstring
     return logging.handlers.SysLogHandler(facility=dest)
 
-def get_stdstream_handler(dest): # pylint: disable=missing-function-docstring
+def handler_stream(dest): # pylint: disable=missing-function-docstring
     if dest == 'stdout':
         return logging.StreamHandler(sys.stdout)
     raise ValueError('Unsupported stream')
 
 logging_types = {
-    'file': get_file_handler,
-    'syslog': get_syslog_handler,
-    'stream': get_stdstream_handler
+    'file': handler_file,
+    'syslog': handler_syslog,
+    'stream': handler_stream
 }
 
 def setup_logging(destination_type, destination) -> None:

@@ -6,11 +6,11 @@ retries on command failures
 import asyncio
 from abc import ABC, abstractmethod
 
-import rs232_to_tripplite.logfactory as nrlogfac
+import rs232_to_tripplite.logfactory as logfac
 from rs232_to_tripplite.commands.base import BaseDeviceCommand
 from rs232_to_tripplite.device import Device
 
-logger = nrlogfac.create_logger(__name__)
+logger = logfac.create_logger(__name__)
 
 
 class CommandWithRetry(BaseDeviceCommand, ABC): # pylint: disable=(too-many-arguments

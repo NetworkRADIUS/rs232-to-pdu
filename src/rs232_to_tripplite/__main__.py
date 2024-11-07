@@ -8,7 +8,7 @@ import pathlib
 
 import yaml
 
-import rs232_to_tripplite.logfactory as nrlogfac
+import rs232_to_tripplite.logfactory as logfac
 from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite
 
 # Read and setup configs
@@ -21,10 +21,10 @@ if 'log' in config:
         raise ValueError('More than one log file found')
 
     for i, key in enumerate(config['log']):
-        nrlogfac.setup_logging(key, config['log'][key])
+        logfac.setup_logging(key, config['log'][key])
 else:
     # default to stdout
-    nrlogfac.setup_logging('stream', 'stdout')
+    logfac.setup_logging('stream', 'stdout')
 
 if __name__ == '__main__':
     serial_listener = Rs2323ToTripplite(
