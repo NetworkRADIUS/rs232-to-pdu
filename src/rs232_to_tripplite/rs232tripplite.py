@@ -222,7 +222,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         Returns:
 
         """
-        if isinstance(OSError, context['exception']):
+        if isinstance(context['exception'], OSError):
             loop.remove_reader(self.serial_conn.ser)
             self.close_connection()
 
