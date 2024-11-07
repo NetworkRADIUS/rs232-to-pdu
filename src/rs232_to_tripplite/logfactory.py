@@ -24,7 +24,7 @@ def handler_file(dest): # pylint: disable=missing-function-docstring
     return logging.FileHandler(dest)
 
 def handler_syslog(dest): # pylint: disable=missing-function-docstring
-    return logging.handlers.SysLogHandler(facility=dest)
+    return logging.handlers.SysLogHandler(facility=dest['facility'])
 
 def handler_stream(dest): # pylint: disable=missing-function-docstring
     if dest == 'stdout':
