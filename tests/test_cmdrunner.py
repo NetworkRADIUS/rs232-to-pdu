@@ -54,8 +54,8 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to ensure that high priority items are run first
         """
-        high_prio_lambda = lambda: None
-        low_prio_lambda = lambda: None
+        high_prio_lambda = lambda: None  #pylint: disable=unnecessary-lambda-assignment
+        low_prio_lambda = lambda: None  #pylint: disable=unnecessary-lambda-assignment
 
         # place low priority item first
         self.event_loop.run_until_complete(
@@ -77,8 +77,8 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to ensure that low priority items are not run first
         """
-        high_prio_lambda = lambda: None
-        low_prio_lambda = lambda: None
+        high_prio_lambda = lambda: None  #pylint: disable=unnecessary-lambda-assignment
+        low_prio_lambda = lambda: None  #pylint: disable=unnecessary-lambda-assignment
 
         # place high priority item first
         self.event_loop.run_until_complete(
