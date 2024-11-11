@@ -8,6 +8,9 @@ serial:
 healthcheck:
   frequency: 5
 
+power_states:
+  cy_delay: 5
+
 snmp:
   retry:
     max_attempts: 3
@@ -25,6 +28,10 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
+      cy: 3
   '002':
     snmp:
       v2:
@@ -35,6 +42,10 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
+      cy: 3
   '003':
     snmp:
       v3:
@@ -49,3 +60,6 @@ devices:
     outlets:
       '001': {{ oid }}
       '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
