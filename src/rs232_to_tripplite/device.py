@@ -6,6 +6,7 @@ Each device must have a name, a list of outlets, and a transport method
 import os
 import pathlib
 import re
+from dataclasses import dataclass
 
 import pysnmp.hlapi.asyncio as pysnmp
 import yaml
@@ -16,58 +17,21 @@ from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3, TransportSnmp
 
 
+@dataclass
 class Device:
     """
-    Class representing a Device with controllable outlets
+    simple class containing the attributes needed to represent a device
+
+    attrs:
+        name: the name of the device (should be unique(
+        outlets: list of outlet names that this device is able to control
+        power_options: a dict mapping power options in string to their corresponding values
+        transport: the transport used by the device to send commands
     """
-
-    def __init__(
-            self,
-            name: str, outlets: list[str], power_states: dict[str: any],
-            transport: Transport
-    ):
-        """
-
-        Args:
-            name: device name
-            outlets: list of outlet names
-            power_states: mappings of power options to values
-            transport: object for sending requests
-        """
-        self.name = name
-        self.outlets = outlets
-        self.power_states = power_states
-        self.transport = transport
-
-    async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
-        """
-        method for retrieving an outlet's state using the transport
-        Args:
-            outlet: string representation of outlet
-
-        Returns:
-            outlet state
-        """
-        return await self.transport.outlet_state_get(outlet)
-
-    async def outlet_state_set(self, outlet: str, state: str) -> tuple[
-        bool, any]:
-        """
-        method for setting an outlet's state using the transport'
-        Args:
-            outlet: string representation of outlet
-            state: desired outlet state
-
-        Returns:
-            outlet state after sending the request
-        """
-        if state not in self.power_states:
-            raise AttributeError(f'Attempting to set device {self.name} '
-                                 f'outlet {outlet} to unknown state {state}.')
-
-        return await self.transport.outlet_state_set(outlet,
-                                                     self.power_states[state])
-
+    name: str
+    outlets: list[str]
+    power_states: dict[str: any]
+    transport: Transport
 
 def snmp_transport_from_dict(configs: dict, outlets: dict) -> TransportSnmp:  # pylint: disable=too-many-locals
     """

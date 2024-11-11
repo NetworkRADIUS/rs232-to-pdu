@@ -5,13 +5,13 @@ representing a SNMP command
 Author: Patrick Guo
 Date: 2024-08-13
 """
+import logging
 from enum import Enum
 
-import rs232_to_tripplite.logfactory as nrlogfac
 from rs232_to_tripplite.parsers.base import BaseParser
 
 # Set up logger for this module
-logger = nrlogfac.create_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class KvmSequenceStates(Enum):
