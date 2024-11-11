@@ -11,7 +11,6 @@ import yaml
 from rs232_to_tripplite.device import FactoryDevice
 from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite
 
-
 if __name__ == '__main__':
     # Read and setup configs
     CONFIG_FILE = pathlib.Path('config.yaml')

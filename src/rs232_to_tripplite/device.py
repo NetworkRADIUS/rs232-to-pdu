@@ -3,15 +3,13 @@ Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
 """
-from dataclasses import dataclass
-
 import os
 import pathlib
 import re
+from dataclasses import dataclass
 
-import yaml
 import pysnmp.hlapi.asyncio as pysnmp
-
+import yaml
 
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
@@ -26,7 +24,7 @@ class Device:
     attrs:
         name: the name of the device (should be unique(
         outlets: list of outlet names that this device is able to control
-        power_options: a dict mapping power options in string to their corresponding values
+        power_states: a dict mapping power options in string to their corresponding values
         transport: the transport used by the device to send commands
     """
     name: str
