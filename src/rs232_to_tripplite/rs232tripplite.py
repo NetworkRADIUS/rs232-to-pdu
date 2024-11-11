@@ -283,10 +283,10 @@ class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
 
         async def send(d, o, s):
             logger.info(
-                f'Command {self.cmd_counter} setting outlet {outlet} of device '
-                f'{d.name} to state {state}')
+                f'Command {self.cmd_counter} setting outlet {o} of device '
+                f'{d.name} to state {s}')
             success = await d.transport.outlet_state_set(
-                outlet, d.power_states[state]
+                o, d.power_states[s]
             )
             logger.info(
                 f'Command {self.cmd_counter} {"passed" if success else "failed"}')
