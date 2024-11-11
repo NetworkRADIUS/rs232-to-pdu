@@ -72,9 +72,8 @@ class TransportSnmp(Transport):
         )
 
         if err_indicator or err_status:
-            logger.error(
-                f'SNMP get command failed. Status: {err_indicator, err_status,
-                err_index, var_binds}')
+            logger.error(f'SNMP get command failed. Status: '
+                         f'{err_indicator, err_status, err_index, var_binds}')
 
         return not (err_indicator or err_status)
 
@@ -102,8 +101,8 @@ class TransportSnmp(Transport):
         )
         if err_indicator or err_status:
             logger.error(
-                f'SNMP set command failed. Status: {err_indicator, err_status,
-                err_index, var_binds}')
+                f'SNMP set command failed. Status: '
+                f'{err_indicator, err_status, err_index, var_binds}')
 
         return not (err_indicator or err_status)
 
