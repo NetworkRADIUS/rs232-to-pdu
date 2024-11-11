@@ -5,6 +5,8 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import asyncio
+import functools
+import logging
 import time
 from typing import Callable
 
@@ -15,20 +17,14 @@ from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-import rs232_to_tripplite.logfactory as nrlogfac
-from rs232_to_tripplite.commands.base import BaseDeviceCommand
-from rs232_to_tripplite.commands.retries import (CommandRetryGet,
-                                                 CommandRetrySet)
 from rs232_to_tripplite.device import device_from_config, Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
-# Set up logger for this module
-nrlogfac.setup()
-logger = nrlogfac.create_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class DeviceCmdRunner:
+class QueueRunner:
     """
     Class that places commands in a queue and runs them one after another
     """
@@ -41,9 +37,7 @@ class DeviceCmdRunner:
         # priority of new items
         self.prio_counter = 0
 
-    async def enqueue(self,
-                      device_cmd: BaseDeviceCommand,
-                      high_prio: bool = False) -> None:
+    async def enqueue(self, func: Callable, high_prio: bool = False) -> None:
         """
         Puts an command item into the queue.
 
@@ -52,7 +46,7 @@ class DeviceCmdRunner:
         New low priority items have lowest priority (run last)
 
         Args:
-            device_cmd (BaseDeviceCmd): command object to be stored in queue
+            func:
             high_prio (bool): whether the command should be run first or last
         """
         # priority is either positive or negative depending on high/low prio
@@ -60,7 +54,7 @@ class DeviceCmdRunner:
         self.prio_counter += 1
 
         # puts item into queue
-        await self.queue.put((priority, device_cmd))
+        await self.queue.put((priority, func))
 
     async def dequeue(self, event_loop: asyncio.AbstractEventLoop):
         """
@@ -77,13 +71,15 @@ class DeviceCmdRunner:
             # retrieve next item from queue and run the command
             # Will not grab next item until the previous command has been
             # completed
-            _, device_cmd = await self.queue.get()
-            await device_cmd.send()
+            _, func = await self.queue.get()
+            await func()
+
 
 class LookForFileEH(FileSystemEventHandler):
     """
     Event Handler to perform callback if desired file is created
     """
+
     def __init__(self, file_to_watch, callback: Callable) -> None:
         self.file_to_watch = file_to_watch
         self.callback_when_found = callback
@@ -92,12 +88,14 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file_to_watch:
             self.callback_when_found()
 
-class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
+
+class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
     """
     Command converter that takes in rs232 input and create/sends device
     commands
     """
-    def __init__( # pylint: disable=too-many-arguments
+
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             serial_device: str, serial_timeout: int,
             max_attempts: int, delay: int, cmd_timeout: int,
@@ -118,7 +116,7 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         """
         # Initialize parser and command issuer
         self.kvm_parser = ParserKvmSequence()
-        self.device_cmd_runner = DeviceCmdRunner()
+        self.device_cmd_runner = QueueRunner()
 
         self.serial_device = serial_device
         self.serial_timeout = serial_timeout
@@ -146,7 +144,8 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         self.devices: dict[str: Device] = {}
         for device_name in device_config.keys():
             self.devices[device_name] = device_from_config(
-                device_name, device_config[device_name]
+                device_name, device_config[device_name],
+                cmd_timeout, delay
             )
 
         self.toggle_delay = toggle_delay
@@ -248,18 +247,22 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         Returns:
 
         """
+
         for _, device in self.devices.items():
+            async def send(d):
+                logger.info(
+                    f'Command {self.cmd_counter} retrieving outlet {d.outlets[0]} of '
+                    f'device {d.name}')
+                success = await d.transport.outlet_state_get(
+                    d.outlets[0])
+                logger.info(
+                    f'Command {self.cmd_counter} {"passed" if success else "failed"}')
+
             self.cmd_counter += 1
             self.event_loop.create_task(
-                self.device_cmd_runner.enqueue(
-                    CommandRetryGet(
-                        device,
-                        # always check the first outlet
-                        device.outlets[0],
-                        self.retry['timeout'], 1, 0,
-                        self.cmd_counter
-                    ), True
-                )
+                self.device_cmd_runner.enqueue(functools.partial(send, device),
+                                               True
+                                               )
             )
 
     def power_change_enqueue(
@@ -277,15 +280,21 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
         Returns:
 
         """
+
+        async def send(d, o, s):
+            logger.info(
+                f'Command {self.cmd_counter} setting outlet {outlet} of device '
+                f'{d.name} to state {state}')
+            success = await d.transport.outlet_state_set(
+                outlet, d.power_states[state]
+            )
+            logger.info(
+                f'Command {self.cmd_counter} {"passed" if success else "failed"}')
+
         self.cmd_counter += 1
         self.event_loop.create_task(
             self.device_cmd_runner.enqueue(
-                CommandRetrySet(
-                    device, outlet, state,
-                    self.retry['timeout'], self.retry['max_attempts'],
-                    self.retry['delay'],
-                    self.cmd_counter
-                )
+                functools.partial(send, device, outlet, state), False
             )
         )
 
@@ -413,7 +422,8 @@ class Rs2323ToTripplite: # pylint: disable=too-many-instance-attributes
             logger.info(f'Setting Device {device} Outlet {outlet} to '
                         f'{cmd}')
 
-            if cmd == 'cy' and cmd not in self.devices[f'{int(device):03d}'].power_states:
+            if cmd == 'cy' and cmd not in self.devices[
+                f'{int(device):03d}'].power_states:  # pylint: disable=line-too-long
                 self.event_loop.create_task(
                     self.outlet_manual_toggle(
                         self.devices[f'{int(device):03d}'],

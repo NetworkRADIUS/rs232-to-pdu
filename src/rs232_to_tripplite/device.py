@@ -3,6 +3,7 @@ Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
 """
+from dataclasses import dataclass
 
 import pysnmp.hlapi.asyncio as pysnmp
 
@@ -11,60 +12,26 @@ from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3
 
 
+@dataclass
 class Device:
     """
-    Class representing a Device with controllable outlets
+    simple class containing the attributes needed to represent a device
+
+    attrs:
+        name: the name of the device (should be unique(
+        outlets: list of outlet names that this device is able to control
+        power_options: a dict mapping power options in string to their corresponding values
+        transport: the transport used by the device to send commands
     """
-
-    def __init__(
-            self,
-            name: str, outlets: list[str], power_states: dict[str: any],
-            transport: Transport
-    ):
-        """
-
-        Args:
-            name: device name
-            outlets: list of outlet names
-            power_states: mappings of power options to values
-            transport: object for sending requests
-        """
-        self.name = name
-        self.outlets = outlets
-        self.power_states = power_states
-        self.transport = transport
-
-    async def outlet_state_get(self, outlet: str) -> tuple[bool, any]:
-        """
-        method for retrieving an outlet's state using the transport
-        Args:
-            outlet: string representation of outlet
-
-        Returns:
-            outlet state
-        """
-        return await self.transport.outlet_state_get(outlet)
-
-    async def outlet_state_set(self, outlet: str, state: str) -> tuple[
-        bool, any]:
-        """
-        method for setting an outlet's state using the transport'
-        Args:
-            outlet: string representation of outlet
-            state: desired outlet state
-
-        Returns:
-            outlet state after sending the request
-        """
-        if state not in self.power_states:
-            raise AttributeError(f'Attempting to set device {self.name} '
-                                 f'outlet {outlet} to unknown state {state}.')
-
-        return await self.transport.outlet_state_set(outlet,
-                                                     self.power_states[state])
+    name: str
+    outlets: list[str]
+    power_states: dict[str: any]
+    transport: Transport
 
 
-def device_from_config(name: str, config: dict) -> Device: # pylint: disable=too-many-locals
+def device_from_config(  # pylint: disable=too-many-locals
+        name: str, config: dict, timeout: int, retry: int
+) -> Device:
     """
     Factory function for creating a Device instance from a config dict
 
@@ -98,7 +65,8 @@ def device_from_config(name: str, config: dict) -> Device: # pylint: disable=too
 
             transport = TransportSnmpV1V2(
                 outlets, 1, ip_address, port,
-                public_community, private_community
+                public_community, private_community,
+                timeout, retry
             )
 
         elif 'v2' in config['snmp']:
@@ -111,7 +79,8 @@ def device_from_config(name: str, config: dict) -> Device: # pylint: disable=too
 
             transport = TransportSnmpV1V2(
                 outlets, 2, ip_address, port,
-                public_community, private_community
+                public_community, private_community,
+                timeout, retry
             )
 
         elif 'v3' in config['snmp']:
@@ -131,7 +100,8 @@ def device_from_config(name: str, config: dict) -> Device: # pylint: disable=too
                 outlets, 3, ip_address, port,
                 user, auth_protocol, auth_passphrase,
                 priv_protocol, priv_passphrase,
-                security_level
+                security_level,
+                timeout, retry
             )
 
     if transport is None:
