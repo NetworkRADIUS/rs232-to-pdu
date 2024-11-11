@@ -3,6 +3,7 @@ import asyncio
 import unittest
 from unittest import mock
 
+import pysnmp.hlapi.asyncio as pysnmp
 
 from rs232_to_tripplite.device import Device # pylint: disable=import-error
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, TransportSnmpV3 # pylint: disable=import-error, line-too-long
@@ -19,7 +20,9 @@ class TestSnmpTransport(unittest.TestCase):
             '127.0.0.1', 161, 'public', 'private'
         )
         cls.v1v2_device = Device(
-            'v1v2', ['001', '002', '003'], cls.v1v2_transport
+            'v1v2', ['001', '002', '003'],
+            {'on': pysnmp.Integer(1), 'of': pysnmp.Integer(2)},
+            cls.v1v2_transport
         )
 
         cls.v3_transport = TransportSnmpV3(
@@ -28,7 +31,9 @@ class TestSnmpTransport(unittest.TestCase):
             '<PASSWORD>', 'authPriv'
         )
         cls.v3_device = Device(
-            'v3', ['001', '002', '003'], cls.v3_transport
+            'v3', ['001', '002', '003'],
+            {'on': pysnmp.Integer(1), 'of': pysnmp.Integer(2)},
+            cls.v3_transport
         )
 
         cls.event_loop = asyncio.new_event_loop()

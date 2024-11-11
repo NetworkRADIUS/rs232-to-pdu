@@ -7,6 +7,7 @@ import os
 import pathlib
 import re
 
+import pysnmp.hlapi.asyncio as pysnmp
 import yaml
 
 from rs232_to_tripplite.transport.base import Transport
@@ -21,17 +22,20 @@ class Device:
 
     def __init__(
             self,
-            name: str, outlets: list[str], transport: Transport
+            name: str, outlets: list[str], power_states: dict[str: any],
+            transport: Transport
     ):
         """
 
         Args:
             name: device name
             outlets: list of outlet names
+            power_states: mappings of power options to values
             transport: object for sending requests
         """
         self.name = name
         self.outlets = outlets
+        self.power_states = power_states
         self.transport = transport
 
     async def get_outlet_state(self, outlet: str) -> tuple[bool, any]:
@@ -45,7 +49,7 @@ class Device:
         """
         return await self.transport.get_outlet_state(outlet)
 
-    async def set_outlet_state(self, outlet: str, state: any) -> tuple[
+    async def set_outlet_state(self, outlet: str, state: str) -> tuple[
         bool, any]:
         """
         method for setting an outlet's state using the transport'
@@ -56,7 +60,12 @@ class Device:
         Returns:
             outlet state after sending the request
         """
-        return await self.transport.set_outlet_state(outlet, state)
+        if state not in self.power_states:
+            raise AttributeError(f'Attempting to set device {self.name} '
+                                 f'outlet {outlet} to unknown state {state}.')
+
+        return await self.transport.set_outlet_state(outlet,
+                                                     self.power_states[state])
 
 
 def snmp_transport_from_dict(configs: dict, outlets: dict) -> TransportSnmp:  # pylint: disable=too-many-locals
@@ -193,6 +202,10 @@ class FactoryDevice:  # pylint: disable=too-few-public-methods
         """
         self.curr_device_transport = None
 
+        power_states = configs['power_states']
+        for option, value in power_states.items():
+            power_states[option] = pysnmp.Integer(value)
+
         # read and store the transport for the device
         for transport in self.transport_handlers:
             if transport in configs:
@@ -212,6 +225,7 @@ class FactoryDevice:  # pylint: disable=too-few-public-methods
 
         return Device(
             name, list(outlets.keys()),
+            power_states,
             self.transport_handlers[self.curr_device_transport](
                 configs[self.curr_device_transport], outlets
             )

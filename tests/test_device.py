@@ -45,12 +45,23 @@ class TestDevice(unittest.TestCase):
             'devices': {
                 'device1': {
                     'test_transport': {},
-                    'outlets': 'test_device'
+                    'outlets': 'test_device',
+                    'power_states': {
+                        'on': 1,
+                        'of': 2
+                    }
                 },
                 'device2': {
                     'test_transport': {},
-                    'outlets': 'test_device_2'
+                    'outlets': 'test_device_2',
+                    'power_states': {
+                        'on': 1,
+                        'of': 2
+                    }
                 }
+            },
+            'power_states': {
+                'cy_delay': 5
             }
         }
         result = self.factory_device.devices_from_full_config(test_config)
