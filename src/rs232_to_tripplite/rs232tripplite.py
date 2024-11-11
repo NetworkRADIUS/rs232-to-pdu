@@ -79,7 +79,6 @@ class LookForFileEH(FileSystemEventHandler):
     """
     Event Handler to perform callback if desired file is created
     """
-
     def __init__(self, file_to_watch, callback: Callable) -> None:
         self.file_to_watch = file_to_watch
         self.callback_when_found = callback
