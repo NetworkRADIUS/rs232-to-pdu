@@ -32,6 +32,14 @@ Healthcheck frequency are configurable in the `config.yaml` file, under `healthc
 
 ---
 
+## Power States
+
+Maps serial commands, `on`, `of` and optionally `cy` (cycle) to SNMP values set on the OIDs that control outlet states.
+If `cy` is not specified, and a `cy` command is received, the outlet state is set to `of`, followed by a delay of
+`power_states.cy_delay` seconds, then `of`.
+
+---
+
 ## SNMP Command Buffering
 To prevent the SNMP agent from being overwhelmed by commands, this tool will not send a command to the SNMP agent until 
 a response for the previous command has been received. As such, all queued commands will be stored in a priority 
@@ -79,6 +87,9 @@ conform the yaml format and have the following sections.
 &emsp;\- ```delay```: time in seconds to wait between SNMP command retries\
 &emsp;\- ```timeout```: time in seconds before timing out SNMP commands
 
+```power_states```:\
+\- ```cy_delay```: time in seconds between off and on commands
+
 ```banks```:\
 \- ```<bank number>*```\
 &emsp; \- ```snmp```:\
@@ -95,7 +106,11 @@ conform the yaml format and have the following sections.
 &emsp;&emsp; \- ```ip_address```: string value of IP address of SNMP agent\
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
 &emsp;&emsp; \- ```outlets```:\
-&emsp;&emsp;&emsp; \- ```<port number>*```: string value of OID for this port
+&emsp;&emsp;&emsp; \- ```<port number>*```: string value of OID for this port\
+&emsp;&emsp; \- ```power_states```:\
+&emsp;&emsp;&emsp; \- ```'on'```: value for on state\
+&emsp;&emsp;&emsp; \- ```'of'```: value for on state\
+&emsp;&emsp;&emsp; \- ```'cy'```: value for on state
 
 ### Sample Config
 
@@ -106,6 +121,9 @@ serial:
 
 healthcheck:
   frequency: 5
+
+power_states:
+  cy_delay: 5
 
 snmp:
   retry:
@@ -121,9 +139,13 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets:
+      '001': {{ oid }}
+      '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
+      cy: 3
   '002':
     snmp:
       v2:
@@ -131,9 +153,13 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets:
+      '001': {{ oid }}
+      '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
+      cy: 3
   '003':
     snmp:
       v3:
@@ -145,7 +171,10 @@ devices:
         security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-      outlets:
-        '001': {{ oid }}
-        '002': {{ oid }}
+    outlets:
+      '001': {{ oid }}
+      '002': {{ oid }}
+    power_states:
+      on: 1
+      of: 2
 ```

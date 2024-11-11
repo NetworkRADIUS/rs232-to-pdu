@@ -23,6 +23,7 @@ if __name__ == '__main__':
         config['snmp']['retry']['delay'],
         config['snmp']['retry']['timeout'],
         config['devices'],
-        config['healthcheck']['frequency']
+        config['healthcheck']['frequency'],
+        config['power_states']['cy_delay']
     )
     serial_listener.start()
