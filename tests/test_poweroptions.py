@@ -1,22 +1,20 @@
 # pylint: disable=missing-module-docstring
-import yaml
-
 import unittest
 
-from rs232_to_tripplite.device import Device, FactoryDevice # pylint: disable=import-error
-
-from rs232_to_tripplite.device import FactoryDevice  # pylint: disable=import-error
-from rs232_to_tripplite.transport.base import Transport  # pylint: disable=import-error
+from rs232_to_tripplite.device import Device, \
+    FactoryDevice  # pylint: disable=import-error
+from rs232_to_tripplite.transport.base import \
+    Transport  # pylint: disable=import-error
 
 
 class TransportDummy(Transport):
     """
     Dummy Transport class for testing purposes
     """
-    async def get_outlet_state(self, outlet):  # pylint: disable=missing-function-docstring,unused-argument
+    async def outlet_state_get(self, outlet):  # pylint: disable=missing-function-docstring,unused-argument
         return None
 
-    async def set_outlet_state(self, outlet, state):  # pylint: disable=missing-function-docstring,unused-argument
+    async def outlet_state_set(self, outlet, state):  # pylint: disable=missing-function-docstring,unused-argument
         return None
 
 class TestDevice(unittest.TestCase):
