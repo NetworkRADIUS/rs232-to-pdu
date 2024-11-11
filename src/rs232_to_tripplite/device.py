@@ -3,14 +3,14 @@ Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
 """
+from dataclasses import dataclass
+
 import os
 import pathlib
 import re
-from dataclasses import dataclass
 
-import pysnmp.hlapi.asyncio as pysnmp
 import yaml
-
+import pysnmp.hlapi.asyncio as pysnmp
 
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
@@ -33,65 +33,6 @@ class Device:
     power_states: dict[str: any]
     transport: Transport
 
-def snmp_transport_from_dict(configs: dict, outlets: dict) -> TransportSnmp:  # pylint: disable=too-many-locals
-    """
-    creates TransportSnmp object from dictionary
-
-    Args:
-        configs: config dict
-        outlets: mapping of outlet name to OID
-
-    Returns:
-        TransportSnmp object
-    """
-    transport = None
-
-    ip_address = configs['ip_address']
-    port = configs['port']
-
-    versions = {
-        'v1': 1,
-        'v2': 2,
-        'v3': 3
-    }
-
-    for version, vnum in versions.items():
-        if version in configs:
-            # if transport has already been over-writen, multiple schemes have
-            # been listed
-            if transport is not None:
-                raise ValueError('Multiple SNMP authentication schemes found')
-
-            match version:
-                # both v1 and v2 use communities, thus combine them
-                case 'v1' | 'v2':
-                    public_community = configs[version]['public_community']
-                    private_community = configs[version]['private_community']
-
-                    transport = TransportSnmpV1V2(
-                        outlets, vnum, ip_address, port,
-                        public_community, private_community
-                    )
-                case 'v3':
-                    user = configs['v3']['user']
-                    auth_protocol = configs['v3']['auth_protocol']
-                    auth_passphrase = configs['v3']['auth_passphrase']
-                    priv_protocol = configs['v3']['priv_protocol']
-                    priv_passphrase = configs['v3']['priv_passphrase']
-                    security_level = configs['v3']['security_level']
-
-                    transport = TransportSnmpV3(
-                        outlets, vnum, ip_address, port,
-                        user, auth_protocol, auth_passphrase,
-                        priv_protocol, priv_passphrase,
-                        security_level
-                    )
-
-    # either no version found or version not supported
-    if transport is None:
-        raise AttributeError('Unsupported SNMP authentication schemes')
-
-    return transport
 
 class FactoryDevice:  # pylint: disable=too-few-public-methods
     """
@@ -99,7 +40,7 @@ class FactoryDevice:  # pylint: disable=too-few-public-methods
     """
     def __init__(self):
         self.transport_handlers = {
-            'snmp': snmp_transport_from_dict
+            'snmp': self.snmp_transport_from_dict
         }
 
         self.name_pattern = re.compile(r'^[a-zA-Z0-9]+([-,_][a-zA-Z0-9]+)*$')
@@ -109,6 +50,72 @@ class FactoryDevice:  # pylint: disable=too-few-public-methods
         # attribute holding the current device's transport
         # used when iterating through all the devices in the config
         self.curr_device_transport = None
+
+    def snmp_transport_from_dict(self, configs: dict, outlets: dict) -> TransportSnmp:  # pylint: disable=too-many-locals
+        """
+        creates TransportSnmp object from dictionary
+
+        Args:
+            configs: config dict
+            outlets: mapping of outlet name to OID
+
+        Returns:
+            TransportSnmp object
+        """
+        transport = None
+
+        ip_address = configs['ip_address']
+        port = configs['port']
+
+        versions = {
+            'v1': 1,
+            'v2': 2,
+            'v3': 3
+        }
+
+        for version, vnum in versions.items():
+            if version in configs:
+                # if transport has already been over-writen, multiple schemes have
+                # been listed
+                if transport is not None:
+                    raise ValueError(
+                        'Multiple SNMP authentication schemes found')
+
+                match version:
+                    # both v1 and v2 use communities, thus combine them
+                    case 'v1' | 'v2':
+                        public_community = configs[version]['public_community']
+                        private_community = configs[version][
+                            'private_community']
+
+                        transport = TransportSnmpV1V2(
+                            outlets, vnum, ip_address, port,
+                            public_community, private_community,
+                            self.configs['snmp']['retry']['timeout'],
+                            self.configs['snmp']['retry']['max_attempts']
+                        )
+                    case 'v3':
+                        user = configs['v3']['user']
+                        auth_protocol = configs['v3']['auth_protocol']
+                        auth_passphrase = configs['v3']['auth_passphrase']
+                        priv_protocol = configs['v3']['priv_protocol']
+                        priv_passphrase = configs['v3']['priv_passphrase']
+                        security_level = configs['v3']['security_level']
+
+                        transport = TransportSnmpV3(
+                            outlets, vnum, ip_address, port,
+                            user, auth_protocol, auth_passphrase,
+                            priv_protocol, priv_passphrase,
+                            security_level,
+                            self.configs['snmp']['retry']['timeout'],
+                            self.configs['snmp']['retry']['max_attempts']
+                        )
+
+        # either no version found or version not supported
+        if transport is None:
+            raise AttributeError('Unsupported SNMP authentication schemes')
+
+        return transport
 
     def __template_from_config(self, device: str) -> dict:
         """
@@ -169,6 +176,8 @@ class FactoryDevice:  # pylint: disable=too-few-public-methods
 
         power_states = configs['power_states']
         for option, value in power_states.items():
+            if not isinstance(option, str):
+                raise TypeError('Power option must be a string')
             power_states[option] = pysnmp.Integer(value)
 
         # read and store the transport for the device

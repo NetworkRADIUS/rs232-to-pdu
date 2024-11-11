@@ -168,7 +168,7 @@ conform the yaml format and have the following sections.
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
 &emsp; \- ```outlets```:\
 &emsp;&emsp; \- ```<port number>*```: string value of OID for this port
-&emsp; \- ```power_options```:\
+&emsp; \- ```power_states```:\
 &emsp;&emsp; \- ```'on'```: value for on state\
 &emsp;&emsp; \- ```'of'```: value for on state\
 &emsp;&emsp; \- ```'cy'```: value for on state

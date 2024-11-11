@@ -17,10 +17,6 @@ from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-import rs232_to_tripplite.logfactory as nrlogfac
-from rs232_to_tripplite.commands.base import BaseDeviceCommand
-from rs232_to_tripplite.commands.retries import (GetCommandWithRetry,
-                                                 SetCommandWithRetry)
 from rs232_to_tripplite.device import Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
