@@ -247,7 +247,6 @@ class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
         Returns:
 
         """
-
         for _, device in self.devices.items():
             async def send(d):
                 logger.info(

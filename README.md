@@ -69,10 +69,42 @@ When using SNMP v3, the user may also choose what security level they desire. Th
 
 ---
 
+## Logging
+
+This tools supports the option of configuring logging output to a file, syslog, or stream. Only one destination may be specified. The destination should be placed under `log.file`, `log.syslog`, or `log.stream`. For file and stream outputs, a single string is expected as the destination. For syslog, a `facility` field is required.
+
+If no logging configuration is present, the tool will default to stdout as the destination.
+
+Below are sample configurations.
+
+```yaml
+# config.yaml
+
+# Sample 1 : logging to file
+log:
+  file: destination.log
+
+# Sample 2 : logging to syslog based on facility
+log:
+  syslog:
+    facility: user
+
+# Sample 3: logging to stream
+log:
+  stream: stdout
+```
+
+---
+
 ## Config Format
 
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
 conform the yaml format and have the following sections.
+
+```log```:\
+\- ```file``` | ```stream```: logging destination as a string
+\- ```syslog```:
+&emsp;\- ```facility```: facility name for syslogs
 
 ```serial```:\
 \- ```device```: string value of serial port tty file\
@@ -115,6 +147,9 @@ conform the yaml format and have the following sections.
 ### Sample Config
 
 ```
+log:
+  file: {{ log_destination }}
+
 serial:
   device: {{ device }}
   timeout: 0
