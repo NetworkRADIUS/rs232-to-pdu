@@ -12,7 +12,7 @@ import yaml
 
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
-    TransportSnmpV3
+    TransportSnmpV3, TransportSnmp
 
 
 @dataclass
@@ -33,6 +33,9 @@ class Device:
 
 
 class FactoryDevice:
+    """
+    Factory class to create devices
+    """
     def __init__(self):
         self.transport_handlers = {
             'snmp': self.transport_snmp
@@ -42,9 +45,23 @@ class FactoryDevice:
         self.configs = None
         self.curr_transport = None
 
-        self.template_name_pattern = re.compile(r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$')
+        self.template_name_pattern = re.compile(
+            r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$'
+        )
 
-    def transport_snmp(self, configs: dict, outlets):
+    def transport_snmp(  # pylint: disable=too-many-locals
+            self, configs: dict, outlets: dict[str: any]
+    ) -> TransportSnmp:
+        """
+        creates snmp transport from config
+
+        Args:
+            configs: dict containing transport configs
+            outlets: dict containing outlet configs
+
+        Returns:
+            SNMP transport
+        """
         transport = None
 
         ip_address = configs['ip_address']
@@ -95,31 +112,39 @@ class FactoryDevice:
 
         return transport
 
-    def devices_from_configs(self, configs: dict):
+    def devices_from_configs(self, configs: dict) -> list[Device]:
+        """
+        creates list of devices from configs
+        Args:
+            configs: entire config containing devices and relevant details
+
+        Returns:
+
+        """
         self.configs = configs
 
         devices = {}
         for device, config in configs['devices'].items():
             self.curr_transport = None
 
-            power_states = configs['devices'][device]['power_states']
+            power_states = config['power_states']
             for option, value in power_states.items():
                 if not isinstance(option, str):
                     raise TypeError('Power option must be a string')
                 power_states[option] = pysnmp.Integer(value)
 
             for transport in self.transport_handlers:
-                if transport in configs['devices'][device]:
+                if transport in config:
                     self.curr_transport = transport
 
-            outlets = configs['devices'][device]['outlets']
+            outlets = config['outlets']
             if isinstance(outlets, str):
                 if not bool(self.template_name_pattern.match(outlets)):
                     raise ValueError(f'Invalid template name detected for '
                                      f'device {device}')
 
-                if outlets in self.configs[self.curr_transport]['devices']['custom']:
-                    self.templates[outlets] = self.configs[self.curr_transport]['devices']['custom'][outlets]
+                if outlets in self.configs[self.curr_transport]['devices']['custom']:  # pylint: disable=line-too-long
+                    self.templates[outlets] = self.configs[self.curr_transport]['devices']['custom'][outlets]  # pylint: disable=line-too-long
                 else:
                     device_path = pathlib.Path(
                         self.configs[self.curr_transport]['devices']['path'],
@@ -134,7 +159,7 @@ class FactoryDevice:
             devices[device] = Device(
                 device, list(outlets.keys()), power_states,
                 self.transport_handlers[self.curr_transport](
-                    configs['devices'][device][self.curr_transport], outlets
+                    config[self.curr_transport], outlets
                 )
             )
         return devices

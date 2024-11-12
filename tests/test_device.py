@@ -6,7 +6,7 @@ from rs232_to_tripplite.device import FactoryDevice, Device # pylint: disable=im
 
 class TestDevice(unittest.TestCase):
     """
-    Test cases pertaining to power options
+    Test cases pertaining to the Device and FactoryDevice class
     """
     def setUp(self):
         self.factory = FactoryDevice()
@@ -79,6 +79,9 @@ class TestDevice(unittest.TestCase):
         )
 
     def test_template_names(self):
+        """
+        Tests the template name sanitization feature
+        """
         template = {
             '001': '1.3.6.1',
             '002': '1.3.6.2'
@@ -103,4 +106,3 @@ class TestDevice(unittest.TestCase):
                     ValueError,
                     self.factory.devices_from_configs, self.configs
                 )
-
