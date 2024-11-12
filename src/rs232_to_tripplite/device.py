@@ -4,6 +4,7 @@ Contains Device class meant to model a target device.
 Each device must have a name, a list of outlets, and a transport method
 """
 import pathlib
+import re
 from dataclasses import dataclass
 
 import pysnmp.hlapi.asyncio as pysnmp
@@ -40,6 +41,8 @@ class FactoryDevice:
         self.templates = {}
         self.configs = None
         self.curr_transport = None
+
+        self.template_name_pattern = re.compile(r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$')
 
     def transport_snmp(self, configs: dict, outlets):
         transport = None
@@ -111,6 +114,10 @@ class FactoryDevice:
 
             outlets = configs['devices'][device]['outlets']
             if isinstance(outlets, str):
+                if not bool(self.template_name_pattern.match(outlets)):
+                    raise ValueError(f'Invalid template name detected for '
+                                     f'device {device}')
+
                 if outlets in self.configs[self.curr_transport]['devices']['custom']:
                     self.templates[outlets] = self.configs[self.curr_transport]['devices']['custom'][outlets]
                 else:
