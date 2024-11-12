@@ -100,6 +100,10 @@ log:
 
 Definitions for outlet locations (e.g. SNMP OIDs) can be placed into a template that can be shared across multiple devices. Templates can either go in the `<transport>.devices.custom.<name>` section in `config.yaml`, or be placed in a separate file named `<name>.yaml` located at the filepath described by `<transport>.devices.path`. To use a template, the `devices.<name>.outlets` field must contain the name of the template.
 
+All device names must conform to the BNF grammar of:\
+`<name> ::= <string> (("-" | "_") <name>)*`\
+`<string> ::= ([A-Z] | [a-z] | [0-9])`+
+
 Below are sample configurations.
 
 Sample 1: templates stored in `config.yaml`
