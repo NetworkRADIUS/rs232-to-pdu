@@ -17,7 +17,7 @@ from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from rs232_to_tripplite.device import device_from_config, Device
+from rs232_to_tripplite.device import Device
 from rs232_to_tripplite.parsers.base import ParseError
 from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
 
@@ -99,7 +99,7 @@ class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
             self,
             serial_device: str, serial_timeout: int,
             max_attempts: int, delay: int, cmd_timeout: int,
-            device_config: dict, healthcheck_frequency: int,
+            devices: dict[str: Device], healthcheck_frequency: int,
             toggle_delay: int
     ):
         """
@@ -141,12 +141,7 @@ class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
             'timeout': cmd_timeout
         }
 
-        self.devices: dict[str: Device] = {}
-        for device_name in device_config.keys():
-            self.devices[device_name] = device_from_config(
-                device_name, device_config[device_name],
-                cmd_timeout, delay
-            )
+        self.devices = devices
 
         self.toggle_delay = toggle_delay
 
