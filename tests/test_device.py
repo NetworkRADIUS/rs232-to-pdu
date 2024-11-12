@@ -4,7 +4,7 @@ import unittest
 from rs232_to_tripplite.device import FactoryDevice, Device # pylint: disable=import-error
 
 
-class TestPowerOptions(unittest.TestCase):
+class TestDevice(unittest.TestCase):
     """
     Test cases pertaining to power options
     """
@@ -15,6 +15,9 @@ class TestPowerOptions(unittest.TestCase):
                 'retry': {
                     'timeout': 5,
                     'max_attempts': 5
+                },
+                'devices': {
+                    'custom': {}
                 }
             },
             'devices': {
@@ -30,12 +33,16 @@ class TestPowerOptions(unittest.TestCase):
                     'outlets': {
                         '001': '1.1',
                         '002': '1.2',
+                    },
+                    'power_states': {
+                        'on': 1,
+                        'of': 2
                     }
                 }
             }
         }
 
-    def test_device_instantiation(self):
+    def test_power_options(self):
         """
         Tests instantiation of a device with various power options
         Returns:
@@ -70,3 +77,30 @@ class TestPowerOptions(unittest.TestCase):
             TypeError,
             self.factory.devices_from_configs, self.configs
         )
+
+    def test_template_names(self):
+        template = {
+            '001': '1.3.6.1',
+            '002': '1.3.6.2'
+        }
+
+        names_valid = ['foo', 'foo_bar', 'foo-bar']
+        for name in names_valid:
+            with self.subTest(name=name):
+                self.configs['devices']['001']['outlets'] = name
+                self.configs['snmp']['devices']['custom'][name] = template
+                self.assertIsInstance(
+                    self.factory.devices_from_configs(self.configs)['001'],
+                    Device
+                )
+
+        names_invalid = ['foo.bar', 'foo-', 'foo_', '-foo', '_foo', 'foo,bar']
+        for name in names_invalid:
+            with self.subTest(name=name):
+                self.configs['devices']['001']['outlets'] = name
+                self.configs['snmp']['devices']['custom'][name] = template
+                self.assertRaises(
+                    ValueError,
+                    self.factory.devices_from_configs, self.configs
+                )
+
