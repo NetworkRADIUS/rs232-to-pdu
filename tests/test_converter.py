@@ -12,7 +12,9 @@ from unittest import mock
 import serial
 import pysnmp.hlapi.asyncio as pysnmp
 
+from rs232_to_tripplite.device import Device
 from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite # pylint: disable=import-error
+from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2
 
 
 class TestConverter(unittest.TestCase):
@@ -50,43 +52,27 @@ class TestConverter(unittest.TestCase):
         self.converter = Rs2323ToTripplite(
             './ttyUSBCI0', 10, 5, 5, 5,
             {
-                '001': {
-                    'snmp': {
-                        'v1': {
-                            'public_community': 'public',
-                            'private_community': 'private'
-                        },
-                        'ip_address': '127.0.0.1',
-                        'port': 161
-                    },
-                    'outlets': {
-                        '001': '1.1',
-                        '002': '1.2'
-                    },
-                    'power_states': {
-                        'on': pysnmp.Integer(2),
-                        'of': pysnmp.Integer(1),
-                        'cy': pysnmp.Integer(3),
-                    }
-                },
-                '002': {
-                    'snmp': {
-                        'v1': {
-                            'public_community': 'public',
-                            'private_community': 'private'
-                        },
-                        'ip_address': '127.0.0.1',
-                        'port': 161
-                    },
-                    'outlets': {
-                        '001': '1.1',
-                        '002': '1.2'
-                    },
-                    'power_states': {
-                        'on': pysnmp.Integer(2),
-                        'of': pysnmp.Integer(1)
-                    }
-                }
+                '001': Device(
+                    '001', ['001', '002'], {
+                        'on': pysnmp.Integer(1),
+                        'of': pysnmp.Integer(2),
+                        'cy': pysnmp.Integer(3)
+                    }, TransportSnmpV1V2(
+                        {'001': '1.3.6.1',
+                         '002': '1.3.6.2'},
+                        1, '192.168.0.1', 161, 'public', 'private', 5, 5
+                    )
+                ),
+                '002': Device(
+                    '002', ['001', '002'], {
+                        'on': pysnmp.Integer(1),
+                        'of': pysnmp.Integer(2)
+                    }, TransportSnmpV1V2(
+                        {'001': '1.3.6.1',
+                         '002': '1.3.6.2'},
+                        1, '192.168.0.1', 161, 'public', 'private', 5, 5
+                    )
+                )
             }, 10, 5
         )
         self.converter.serial_conn_open()
