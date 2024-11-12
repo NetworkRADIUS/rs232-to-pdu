@@ -119,7 +119,7 @@ class FactoryDevice:
                         f'{outlets}.yaml'
                     )
                     with open(device_path, 'r', encoding='utf-8') as fileopen:
-                        self.templates[device] = yaml.load(fileopen,
+                        self.templates[outlets] = yaml.load(fileopen,
                                                            Loader=yaml.FullLoader)
 
                 # read from cached templates
