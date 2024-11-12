@@ -125,7 +125,7 @@ class FactoryDevice:
                 # read from cached templates
                 outlets = self.templates[outlets]
             devices[device] = Device(
-                device, outlets, power_states,
+                device, list(outlets.keys()), power_states,
                 self.transport_handlers[self.curr_transport](
                     configs['devices'][device][self.curr_transport], outlets
                 )
