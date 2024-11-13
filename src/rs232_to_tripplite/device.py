@@ -43,7 +43,6 @@ class FactoryDevice:
 
         self.templates = {}
         self.configs = None
-        self.curr_transport = None
 
         self.template_name_pattern = re.compile(
             r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$'
@@ -112,7 +111,7 @@ class FactoryDevice:
 
         return transport
 
-    def devices_from_configs(self, configs: dict) -> list[Device]:
+    def devices_from_configs(self, configs: dict) -> dict[str: Device]:
         """
         creates list of devices from configs
         Args:
@@ -124,42 +123,53 @@ class FactoryDevice:
         self.configs = configs
 
         devices = {}
-        for device, config in configs['devices'].items():
-            self.curr_transport = None
+        for name, config in configs['devices'].items():
+            transport_type = None
 
-            power_states = config['power_states']
+            for transport in self.transport_handlers:
+                if transport in config:
+                    transport_type = transport
+
+            if transport_type is None:
+                raise ValueError(f'Missing or unsupported transport for '
+                                 f'device {name}')
+
+            device = config['device']
+            if isinstance(device, str):
+                if not bool(self.template_name_pattern.match(device)):
+                    raise ValueError(f'Invalid template name detected for '
+                                     f'device {device}')
+
+                # load template if not already cached
+                if device not in self.templates:
+                    # load from internal config.yaml
+                    if device in self.configs[transport_type]['devices']['custom']:
+                        self.templates[device] = self.configs[transport_type]['devices']['custom'][device]
+
+                    # load from external file
+                    else:
+                        template_path = pathlib.Path(
+                            self.configs[transport_type]['devices']['path'],
+                            f'{device}.yaml'
+                        )
+                        with open(template_path, 'r', encoding='utf-8') as fileopen:
+                            self.templates[device] = yaml.load(
+                                fileopen, Loader=yaml.FullLoader
+                            )
+
+                device = self.templates[device]
+
+            power_states = device['power_states']
             for option, value in power_states.items():
                 if not isinstance(option, str):
                     raise TypeError('Power option must be a string')
                 power_states[option] = pysnmp.Integer(value)
 
-            for transport in self.transport_handlers:
-                if transport in config:
-                    self.curr_transport = transport
 
-            outlets = config['outlets']
-            if isinstance(outlets, str):
-                if not bool(self.template_name_pattern.match(outlets)):
-                    raise ValueError(f'Invalid template name detected for '
-                                     f'device {device}')
-
-                if outlets in self.configs[self.curr_transport]['devices']['custom']:  # pylint: disable=line-too-long
-                    self.templates[outlets] = self.configs[self.curr_transport]['devices']['custom'][outlets]  # pylint: disable=line-too-long
-                else:
-                    device_path = pathlib.Path(
-                        self.configs[self.curr_transport]['devices']['path'],
-                        f'{outlets}.yaml'
-                    )
-                    with open(device_path, 'r', encoding='utf-8') as fileopen:
-                        self.templates[outlets] = yaml.load(fileopen,
-                                                           Loader=yaml.FullLoader)
-
-                # read from cached templates
-                outlets = self.templates[outlets]
-            devices[device] = Device(
-                device, list(outlets.keys()), power_states,
-                self.transport_handlers[self.curr_transport](
-                    config[self.curr_transport], outlets
+            devices[name] = Device(
+                name, list(device['outlets'].keys()), power_states,
+                self.transport_handlers[transport_type](
+                    config[transport_type], device['outlets']
                 )
             )
         return devices
