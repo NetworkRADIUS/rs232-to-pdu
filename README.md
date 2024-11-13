@@ -96,6 +96,52 @@ log:
 
 ---
 
+## Device Templates
+
+Definitions for outlet locations (e.g. SNMP OIDs) can be placed into a template that can be shared across multiple devices. Templates can either go in the `<transport>.devices.custom.<name>` section in `config.yaml`, or be placed in a separate file named `<name>.yaml` located at the filepath described by `<transport>.devices.path`. To use a template, the `devices.<name>.device` field must contain the name of the template.
+
+All device names must conform to the BNF grammar of:\
+`<name> ::= <string> (("-" | "_") <name>)*`\
+`<string> ::= ([A-Z] | [a-z] | [0-9])`+
+
+Below are sample configurations.
+
+Sample 1: templates stored in `config.yaml`
+```yaml
+# config.yaml
+snmp:
+  devices:
+    custom:
+      foo:
+        outlets:
+          '001': '1.3.6.1'
+        power_states:
+          'on': 1
+
+devices:
+  '001':
+    device: foo
+```
+
+Sample 2: external template
+```yaml
+# config.yaml
+snmp:
+  devices:
+    path: './devices/'
+
+devices:
+  '001':
+    device: foo
+  
+# ./devices/foo.yaml
+outlets:
+  '001': '1.3.6.1'
+  '002': '1.3.6.2'
+power_states:
+  'on': 1
+```
+
 ## Config Format
 
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
@@ -117,7 +163,15 @@ conform the yaml format and have the following sections.
 \- ```retry```:\
 &emsp;\- ```max_attempts```: integer value of maximum attempts allowed for an SNMP command\
 &emsp;\- ```delay```: time in seconds to wait between SNMP command retries\
-&emsp;\- ```timeout```: time in seconds before timing out SNMP commands
+&emsp;\- ```timeout```: time in seconds before timing out SNMP commands\
+\- ```devices```:\
+&emsp;\- ```custom```:\
+&emsp;&emsp;\- ```<device name>```\
+&emsp;&emsp;&emsp;\- ```outlets```:\
+&emsp;&emsp;&emsp;&emsp;\- ```<port numbers*>```: string value of OID for this port\
+&emsp;&emsp;&emsp;\- ```power_states```:\
+&emsp;&emsp;&emsp;&emsp; ```<power_state>```: value for this power state\
+&emsp;\- ```path```: path to template files
 
 ```power_states```:\
 \- ```cy_delay```: time in seconds between off and on commands
@@ -137,12 +191,13 @@ conform the yaml format and have the following sections.
 &emsp;&emsp;&emsp; \- ```security_level```: ```noAuthNoPriv``` | ```authNoPriv``` | ```authPriv```\
 &emsp;&emsp; \- ```ip_address```: string value of IP address of SNMP agent\
 &emsp;&emsp; \- ```port```: integer value of network port of SNMP agent\
-&emsp;&emsp; \- ```outlets```:\
-&emsp;&emsp;&emsp; \- ```<port number>*```: string value of OID for this port\
-&emsp;&emsp; \- ```power_states```:\
-&emsp;&emsp;&emsp; \- ```'on'```: value for on state\
-&emsp;&emsp;&emsp; \- ```'of'```: value for on state\
-&emsp;&emsp;&emsp; \- ```'cy'```: value for on state
+&emsp;&emsp;\- ```device```:\
+&emsp;&emsp;&emsp; \- ```outlets```:\
+&emsp;&emsp;&emsp;&emsp; \- ```<port number>*```: string value of OID for this port\
+&emsp;&emsp;&emsp; \- ```power_states```:\
+&emsp;&emsp;&emsp;&emsp; \- ```'on'```: value for on state\
+&emsp;&emsp;&emsp;&emsp; \- ```'of'```: value for on state\
+&emsp;&emsp;&emsp;&emsp; \- ```'cy'```: value for on state
 
 ### Sample Config
 
@@ -165,6 +220,15 @@ snmp:
     max_attempts: 3
     delay: 5
     timeout: 5
+  devices:
+    custom:
+      bar:
+        outlets:
+          '001': '1.3.6.1'
+        power_states:
+          'on': 1
+          'of': 2
+    path: './etc/'
 
 devices:
   '001':
@@ -174,13 +238,14 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-    outlets:
-      '001': {{ oid }}
-      '002': {{ oid }}
-    power_states:
-      on: 1
-      of: 2
-      cy: 3
+    device:
+      outlets:
+        '001': {{ oid }}
+        '002': {{ oid }}
+      power_states:
+        on: 1
+        of: 2
+        cy: 3
   '002':
     snmp:
       v2:
@@ -188,13 +253,7 @@ devices:
         private_community: {{ private_community_name }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-    outlets:
-      '001': {{ oid }}
-      '002': {{ oid }}
-    power_states:
-      on: 1
-      of: 2
-      cy: 3
+    device: foo
   '003':
     snmp:
       v3:
@@ -206,10 +265,5 @@ devices:
         security_level: {{ snmp_security_level }}
       ip_address: {{ ip_address }}
       port: {{ port }}
-    outlets:
-      '001': {{ oid }}
-      '002': {{ oid }}
-    power_states:
-      on: 1
-      of: 2
+    device: bar
 ```

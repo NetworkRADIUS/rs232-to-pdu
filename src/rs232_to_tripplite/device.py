@@ -3,13 +3,16 @@ Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
 """
+import pathlib
+import re
 from dataclasses import dataclass
 
 import pysnmp.hlapi.asyncio as pysnmp
+import yaml
 
 from rs232_to_tripplite.transport.base import Transport
 from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
-    TransportSnmpV3
+    TransportSnmpV3, TransportSnmp
 
 
 @dataclass
@@ -29,83 +32,144 @@ class Device:
     transport: Transport
 
 
-def device_from_config(  # pylint: disable=too-many-locals
-        name: str, config: dict, timeout: int, retry: int
-) -> Device:
+class FactoryDevice:
     """
-    Factory function for creating a Device instance from a config dict
-
-    Args:
-        name: string representation of device name
-        config: dictionary containing configs for a device
-
-    Returns:
-        Device instance
+    Factory class to create devices
     """
-    outlets = config['outlets']
-    transport = None  # should be over-writen or exception thrown
+    def __init__(self):
+        self.transport_handlers = {
+            'snmp': self.transport_snmp
+        }
 
-    power_states = config['power_states']
-    for option, value in power_states.items():
-        if not isinstance(option, str):
-            raise TypeError('Power option must be a string')
-        power_states[option] = pysnmp.Integer(value)
+        self.templates = {}
+        self.configs = None
 
-    if 'snmp' in config:
-        ip_address = config['snmp']['ip_address']
-        port = config['snmp']['port']
+        self.template_name_pattern = re.compile(
+            r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$'
+        )
 
-        if 'v1' in config['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v2' in config['snmp'] or 'v3' in config['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
-            public_community = config['snmp']['v1']['public_community']
-            private_community = config['snmp']['v1']['private_community']
+    def transport_snmp(  # pylint: disable=too-many-locals
+            self, configs: dict, outlets: dict[str: any]
+    ) -> TransportSnmp:
+        """
+        creates snmp transport from config
 
-            transport = TransportSnmpV1V2(
-                outlets, 1, ip_address, port,
-                public_community, private_community,
-                timeout, retry
+        Args:
+            configs: dict containing transport configs
+            outlets: dict containing outlet configs
+
+        Returns:
+            SNMP transport
+        """
+        transport = None
+
+        ip_address = configs['ip_address']
+        port = configs['port']
+
+        versions = {
+            'v1': 1,
+            'v2': 2,
+            'v3': 3
+        }
+        for version, vnum in versions.items():
+            if version not in configs:
+                continue
+
+            match version:
+                # both v1 and v2 use communities, thus combine them
+                case 'v1' | 'v2':
+                    public_community = configs[version]['public_community']
+                    private_community = configs[version][
+                        'private_community']
+
+                    transport = TransportSnmpV1V2(
+                        outlets, vnum, ip_address, port,
+                        public_community, private_community,
+                        self.configs['snmp']['retry']['timeout'],
+                        self.configs['snmp']['retry']['max_attempts']
+                    )
+                case 'v3':
+                    user = configs['v3']['user']
+                    auth_protocol = configs['v3']['auth_protocol']
+                    auth_passphrase = configs['v3']['auth_passphrase']
+                    priv_protocol = configs['v3']['priv_protocol']
+                    priv_passphrase = configs['v3']['priv_passphrase']
+                    security_level = configs['v3']['security_level']
+
+                    transport = TransportSnmpV3(
+                        outlets, vnum, ip_address, port,
+                        user, auth_protocol, auth_passphrase,
+                        priv_protocol, priv_passphrase,
+                        security_level,
+                        self.configs['snmp']['retry']['timeout'],
+                        self.configs['snmp']['retry']['max_attempts']
+                    )
+
+        # either no version found or version not supported
+        if transport is None:
+            raise AttributeError('Unsupported SNMP authentication schemes')
+
+        return transport
+
+    def devices_from_configs(self, configs: dict) -> dict[str: Device]:
+        """
+        creates list of devices from configs
+        Args:
+            configs: entire config containing devices and relevant details
+
+        Returns:
+
+        """
+        self.configs = configs
+
+        devices = {}
+        for name, config in configs['devices'].items():
+            transport_type = None
+
+            for transport in self.transport_handlers:
+                if transport in config:
+                    transport_type = transport
+
+            if transport_type is None:
+                raise ValueError(f'Missing or unsupported transport for '
+                                 f'device {name}')
+
+            device = config['device']
+            if isinstance(device, str):
+                if not bool(self.template_name_pattern.match(device)):
+                    raise ValueError(f'Invalid template name detected for '
+                                     f'device {device}')
+
+                # load template if not already cached
+                if device not in self.templates:
+                    # load from internal config.yaml
+                    if device in self.configs[transport_type]['devices']['custom']:  # pylint: disable=line-too-long
+                        self.templates[device] = self.configs[transport_type]['devices']['custom'][device]  # pylint: disable=line-too-long
+
+                    # load from external file
+                    else:
+                        template_path = pathlib.Path(
+                            self.configs[transport_type]['devices']['path'],
+                            f'{device}.yaml'
+                        )
+                        with open(template_path, 'r', encoding='utf-8') as fileopen:
+                            self.templates[device] = yaml.load(
+                                fileopen, Loader=yaml.FullLoader
+                            )
+
+                device = self.templates[device]
+
+            power_states = device['power_states']
+            for option, value in power_states.items():
+                if not isinstance(option, str):
+                    raise TypeError('Power option must be a string')
+                power_states[option] = pysnmp.Integer(value)
+
+
+            devices[name] = Device(
+                name, list(device['outlets'].keys()), power_states,
+                self.transport_handlers[transport_type](
+                    config[transport_type], device['outlets']
+                )
             )
-
-        elif 'v2' in config['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v1' in config['snmp'] or 'v3' in config['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
-            public_community = config['snmp']['v2']['public_community']
-            private_community = config['snmp']['v2']['private_community']
-
-            transport = TransportSnmpV1V2(
-                outlets, 2, ip_address, port,
-                public_community, private_community,
-                timeout, retry
-            )
-
-        elif 'v3' in config['snmp']:
-            # ensure only 1 SNMP version is present
-            if 'v1' in config['snmp'] or 'v2' in config['snmp']:
-                raise AttributeError(f'Device {name} contains multiple SNMP '
-                                     f'authentication schemes')
-
-            user = config['snmp']['v3']['user']
-            auth_protocol = config['snmp']['v3']['auth_protocol']
-            auth_passphrase = config['snmp']['v3']['auth_passphrase']
-            priv_protocol = config['snmp']['v3']['priv_protocol']
-            priv_passphrase = config['snmp']['v3']['priv_passphrase']
-            security_level = config['snmp']['v3']['security_level']
-
-            transport = TransportSnmpV3(
-                outlets, 3, ip_address, port,
-                user, auth_protocol, auth_passphrase,
-                priv_protocol, priv_passphrase,
-                security_level,
-                timeout, retry
-            )
-
-    if transport is None:
-        # raise error if transport is not supported
-        raise TypeError(f'Unsupported transport for device {name}')
-
-    return Device(name, list(outlets.keys()), power_states, transport)
+        return devices
