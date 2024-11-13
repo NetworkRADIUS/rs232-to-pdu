@@ -30,13 +30,15 @@ class TestDevice(unittest.TestCase):
                         'ip_address': '127.0.0.1',
                         'port': 161
                     },
-                    'outlets': {
-                        '001': '1.1',
-                        '002': '1.2',
-                    },
-                    'power_states': {
-                        'on': 1,
-                        'of': 2
+                    'device': {
+                        'outlets': {
+                            '001': '1.1',
+                            '002': '1.2',
+                        },
+                        'power_states': {
+                            'on': 1,
+                            'of': 2
+                        }
                     }
                 }
             }
@@ -48,31 +50,31 @@ class TestDevice(unittest.TestCase):
         Returns:
 
         """
-        self.configs['devices']['001']['power_states'] = {'of':1, 'on':2, 'cy':3}
+        self.configs['devices']['001']['device']['power_states'] = {'of':1, 'on':2, 'cy':3}
         self.assertIsInstance(
             self.factory.devices_from_configs(self.configs)['001'],
             Device
         )
 
-        self.configs['devices']['001']['power_states'] = {'of':1, 'on':2}
+        self.configs['devices']['001']['device']['power_states'] = {'of':1, 'on':2}
         self.assertIsInstance(
             self.factory.devices_from_configs(self.configs)['001'],
             Device
         )
 
-        self.configs['devices']['001']['power_states'] = {'of':'1', 'on':'2', 'cy':'3'}
+        self.configs['devices']['001']['device']['power_states'] = {'of':'1', 'on':'2', 'cy':'3'}
         self.assertIsInstance(
             self.factory.devices_from_configs(self.configs)['001'],
             Device
         )
 
-        self.configs['devices']['001']['power_states'] = {'of':'1', 'on':'2'}
+        self.configs['devices']['001']['device']['power_states'] = {'of':'1', 'on':'2'}
         self.assertIsInstance(
             self.factory.devices_from_configs(self.configs)['001'],
             Device
         )
 
-        self.configs['devices']['001']['power_states'] = {1:'1'}
+        self.configs['devices']['001']['device']['power_states'] = {1:'1'}
         self.assertRaises(
             TypeError,
             self.factory.devices_from_configs, self.configs
@@ -100,7 +102,7 @@ class TestDevice(unittest.TestCase):
         names_invalid = ['foo.bar', 'foo-', 'foo_', '-foo', '_foo', 'foo,bar']
         for name in names_invalid:
             with self.subTest(name=name):
-                self.configs['devices']['001']['outlets'] = name
+                self.configs['devices']['001']['device'] = name
                 self.configs['snmp']['devices']['custom'][name] = template
                 self.assertRaises(
                     ValueError,
