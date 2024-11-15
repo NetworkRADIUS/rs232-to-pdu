@@ -1,4 +1,21 @@
 """
+Copyright (C) 2024 InkBridge Networks (legal@inkbridge.io)
+
+This software may not be redistributed in any form without the prior
+written consent of InkBridge Networks.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
 Contains Device class meant to model a target device.
 
 Each device must have a name, a list of outlets, and a transport method
@@ -66,48 +83,37 @@ class FactoryDevice:
         ip_address = configs['ip_address']
         port = configs['port']
 
-        versions = {
-            'v1': 1,
-            'v2': 2,
-            'v3': 3
-        }
-        for version, vnum in versions.items():
-            if version not in configs:
-                continue
+        match configs['version']:
+            # both v1 and v2 use communities, thus combine them
+            case 'v1' | 'v2':
+                public_community = configs['authentication']['public_community']
+                private_community = configs['authentication']['private_community']
 
-            match version:
-                # both v1 and v2 use communities, thus combine them
-                case 'v1' | 'v2':
-                    public_community = configs[version]['public_community']
-                    private_community = configs[version][
-                        'private_community']
+                transport = TransportSnmpV1V2(
+                    outlets, 1 if configs['version'] == 'v1' else 2,
+                    ip_address, port,
+                    public_community, private_community,
+                    self.configs['snmp']['retry']['timeout'],
+                    self.configs['snmp']['retry']['max_attempts']
+                )
+            case 'v3':
+                user = configs['authentication']['user']
+                auth_protocol = configs['authentication']['auth_protocol']
+                auth_passphrase = configs['authentication']['auth_passphrase']
+                priv_protocol = configs['authentication']['priv_protocol']
+                priv_passphrase = configs['authentication']['priv_passphrase']
+                security_level = configs['authentication']['security_level']
 
-                    transport = TransportSnmpV1V2(
-                        outlets, vnum, ip_address, port,
-                        public_community, private_community,
-                        self.configs['snmp']['retry']['timeout'],
-                        self.configs['snmp']['retry']['max_attempts']
-                    )
-                case 'v3':
-                    user = configs['v3']['user']
-                    auth_protocol = configs['v3']['auth_protocol']
-                    auth_passphrase = configs['v3']['auth_passphrase']
-                    priv_protocol = configs['v3']['priv_protocol']
-                    priv_passphrase = configs['v3']['priv_passphrase']
-                    security_level = configs['v3']['security_level']
-
-                    transport = TransportSnmpV3(
-                        outlets, vnum, ip_address, port,
-                        user, auth_protocol, auth_passphrase,
-                        priv_protocol, priv_passphrase,
-                        security_level,
-                        self.configs['snmp']['retry']['timeout'],
-                        self.configs['snmp']['retry']['max_attempts']
-                    )
-
-        # either no version found or version not supported
-        if transport is None:
-            raise AttributeError('Unsupported SNMP authentication schemes')
+                transport = TransportSnmpV3(
+                    outlets, 3, ip_address, port,
+                    user, auth_protocol, auth_passphrase,
+                    priv_protocol, priv_passphrase,
+                    security_level,
+                    self.configs['snmp']['retry']['timeout'],
+                    self.configs['snmp']['retry']['max_attempts']
+                )
+            case _:
+                raise AttributeError('Unsupported SNMP version')
 
         return transport
 
