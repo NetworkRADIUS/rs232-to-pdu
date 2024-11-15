@@ -1,6 +1,6 @@
-## RS-232 to Tripplite PDU Tool
+## RS-232 to PDU Tool
 
-The RS-232 to Tripplite PDU tool allows admins to send byte strings through an RS-232 connector to control a Tripplite 
+The RS-232 to PDU tool allows admins to send byte strings through an RS-232 connector to control a SNMP-enabled 
 PDU. Supported operations are to turn a specific outlet port ON, OFF, and CYCLE.
 
 ---

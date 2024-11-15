@@ -24,7 +24,7 @@ import logging
 import pysnmp.hlapi.asyncio as pysnmp
 from pysnmp.hlapi.asyncio import CommunityData, UsmUserData
 
-from rs232_to_tripplite.transport.base import Transport
+from rs232_to_pdu.transport.base import Transport
 
 logger = logging.getLogger(__name__)
 

@@ -18,7 +18,7 @@ SUCH DAMAGE.
 """
 import unittest
 
-from rs232_to_tripplite.device import FactoryDevice, Device # pylint: disable=import-error
+from rs232_to_pdu.device import FactoryDevice, Device # pylint: disable=import-error
 
 
 class TestDevice(unittest.TestCase):

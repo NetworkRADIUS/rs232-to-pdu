@@ -25,8 +25,8 @@ import pathlib
 
 import yaml
 
-from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite
-from rs232_to_tripplite.device import FactoryDevice
+from rs232_to_pdu.rs232topdu import Rs232ToPdu
+from rs232_to_pdu.device import FactoryDevice
 
 # Read and setup configs
 CONFIG_FILE = pathlib.Path('config.yaml')
@@ -37,7 +37,7 @@ factory = FactoryDevice()
 devices = factory.devices_from_configs(config)
 
 if __name__ == '__main__':
-    serial_listener = Rs2323ToTripplite(
+    serial_listener = Rs232ToPdu(
         config['serial']['device'],
         config['serial']['timeout'],
         config['snmp']['retry']['max_attempts'],

@@ -16,7 +16,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
-Test cases for the Rs232ToTripplite class
+Test cases for the Ra232 class
 """
 
 import os
@@ -29,14 +29,14 @@ from unittest import mock
 import serial
 import pysnmp.hlapi.asyncio as pysnmp
 
-from rs232_to_tripplite.device import Device
-from rs232_to_tripplite.rs232tripplite import Rs2323ToTripplite # pylint: disable=import-error
-from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2
+from rs232_to_pdu.device import Device
+from rs232_to_pdu.rs232topdu import Rs232ToPdu # pylint: disable=import-error
+from rs232_to_pdu.transport.snmp import TransportSnmpV1V2
 
 
 class TestConverter(unittest.TestCase):
     """
-    Test cases for the Rs232ToTripplite class
+    Test cases for the Rs232ToPdu class
     """
     @classmethod
     def setUpClass(cls):
@@ -66,7 +66,7 @@ class TestConverter(unittest.TestCase):
 
 
     def setUp(self):
-        self.converter = Rs2323ToTripplite(
+        self.converter = Rs232ToPdu(
             './ttyUSBCI0', 10, 5, 5, 5,
             {
                 '001': Device(
@@ -97,11 +97,11 @@ class TestConverter(unittest.TestCase):
     def tearDown(self):
         self.converter.serial_conn_close()
 
-    @mock.patch('rs232_to_tripplite.rs232tripplite.Rs2323ToTripplite.'
+    @mock.patch('rs232_to_pdu.rs232topdu.Rs2323ToPdu.'
                 'power_change_enqueue')
     def test_converter_read_parse(self, mock_func):
         """
-        Tests an end-to-end parsing from the Rs2323ToTripplite class
+        Tests an end-to-end parsing from the Rs232ToPdu class
         Args:
             mock_func: mocking add_power_change_to_queue
 
@@ -156,7 +156,7 @@ class TestConverter(unittest.TestCase):
         Returns:
 
         """
-        with mock.patch('rs232_to_tripplite.rs232tripplite.Rs2323ToTripplite.'
+        with mock.patch('rs232_to_pdu.rs232topdu.Rs2323ToPdu.'
                         'power_change_enqueue') as mock_func:
 
             self.rs232_wr_dev.write('cy 1 1\r'.encode('utf-8'))

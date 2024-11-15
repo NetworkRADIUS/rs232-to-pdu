@@ -27,8 +27,8 @@ from dataclasses import dataclass
 import pysnmp.hlapi.asyncio as pysnmp
 import yaml
 
-from rs232_to_tripplite.transport.base import Transport
-from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, \
+from rs232_to_pdu.transport.base import Transport
+from rs232_to_pdu.transport.snmp import TransportSnmpV1V2, \
     TransportSnmpV3, TransportSnmp
 
 

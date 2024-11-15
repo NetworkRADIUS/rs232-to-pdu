@@ -23,8 +23,8 @@ from unittest import mock
 import pysnmp.hlapi.asyncio as pysnmp
 
 
-from rs232_to_tripplite.device import Device # pylint: disable=import-error
-from rs232_to_tripplite.transport.snmp import TransportSnmpV1V2, TransportSnmpV3 # pylint: disable=import-error, line-too-long
+from rs232_to_pdu.device import Device # pylint: disable=import-error
+from rs232_to_pdu.transport.snmp import TransportSnmpV1V2, TransportSnmpV3 # pylint: disable=import-error, line-too-long
 
 
 class TestSnmpTransport(unittest.TestCase):

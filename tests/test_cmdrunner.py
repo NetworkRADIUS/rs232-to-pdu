@@ -21,7 +21,7 @@ Contains tests for the DeviceCmdRunner class
 
 import unittest
 import asyncio
-from rs232_to_tripplite.rs232tripplite import QueueRunner # pylint: disable=import-error
+from rs232_to_pdu.rs232topdu import QueueRunner # pylint: disable=import-error
 
 
 async def dummy_sleep(timeout):

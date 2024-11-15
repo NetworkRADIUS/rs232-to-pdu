@@ -16,13 +16,13 @@
 # SUCH DAMAGE.
 
 [Unit]
-Description = A tool to convert ser232 string commands to SNMP SET commands for Tripplite PDUs
-Documentation = https://github.com/NetworkRADIUS/rs232-to-tripplite-pdu/blob/main/README.md
+Description = A tool to convert ser232 string commands to SNMP SET commands for PDUs
+Documentation = https://github.com/NetworkRADIUS/rs232-to-pdu/blob/main/README.md
 
 [Service]
 Type=simple
 Restart=on-watchdog
-ExecStart=/usr/local/ser2snmp/venv/bin/python -m ser2snmp
+ExecStart=/usr/local/rs232_to_pdu/venv/bin/python -m rs232_to_pdu
 
 [Install]
 WantedBy=multi-user.target

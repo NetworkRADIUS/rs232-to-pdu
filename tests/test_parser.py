@@ -19,8 +19,8 @@ SUCH DAMAGE.
 """
 import unittest
 
-from rs232_to_tripplite.parsers.base import ParseError # pylint: disable=import-error
-from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence # pylint: disable=import-error
+from rs232_to_pdu.parsers.base import ParseError # pylint: disable=import-error
+from rs232_to_pdu.parsers.kvmseq import ParserKvmSequence # pylint: disable=import-error
 
 
 class TestKvmParser(unittest.TestCase):

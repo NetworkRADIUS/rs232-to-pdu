@@ -25,7 +25,7 @@ Date: 2024-08-13
 import logging
 from enum import Enum
 
-from rs232_to_tripplite.parsers.base import BaseParser
+from rs232_to_pdu.parsers.base import BaseParser
 
 # Set up logger for this module
 logger = logging.getLogger(__name__)

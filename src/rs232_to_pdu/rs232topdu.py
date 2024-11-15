@@ -34,9 +34,9 @@ from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from rs232_to_tripplite.device import Device
-from rs232_to_tripplite.parsers.base import ParseError
-from rs232_to_tripplite.parsers.kvmseq import ParserKvmSequence
+from rs232_to_pdu.device import Device
+from rs232_to_pdu.parsers.base import ParseError
+from rs232_to_pdu.parsers.kvmseq import ParserKvmSequence
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ class LookForFileEH(FileSystemEventHandler):
             self.callback_when_found()
 
 
-class Rs2323ToTripplite:  # pylint: disable=too-many-instance-attributes
+class Rs232ToPdu:  # pylint: disable=too-many-instance-attributes
     """
     Command converter that takes in rs232 input and create/sends device
     commands
