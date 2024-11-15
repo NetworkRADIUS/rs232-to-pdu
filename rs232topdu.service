@@ -16,7 +16,7 @@
 # SUCH DAMAGE.
 
 [Unit]
-Description = A tool to convert ser232 string commands to SNMP SET commands for PDUs
+Description = A tool to convert rs232 string commands to SNMP SET commands for PDUs
 Documentation = https://github.com/NetworkRADIUS/rs232-to-pdu/blob/main/README.md
 
 [Service]

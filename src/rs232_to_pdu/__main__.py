@@ -29,7 +29,7 @@ from rs232_to_pdu.rs232topdu import Rs232ToPdu
 from rs232_to_pdu.device import FactoryDevice
 
 # Read and setup configs
-CONFIG_FILE = pathlib.Path('config.yaml')
+CONFIG_FILE = pathlib.Path('/etc', 'config.yaml')
 with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
     config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
