@@ -83,37 +83,48 @@ class FactoryDevice:
         ip_address = configs['ip_address']
         port = configs['port']
 
-        match configs['version']:
-            # both v1 and v2 use communities, thus combine them
-            case 'v1' | 'v2':
-                public_community = configs['authentication']['public_community']
-                private_community = configs['authentication']['private_community']
+        versions = {
+            'v1': 1,
+            'v2': 2,
+            'v3': 3
+        }
+        for version, vnum in versions.items():
+            if version not in configs:
+                continue
 
-                transport = TransportSnmpV1V2(
-                    outlets, 1 if configs['version'] == 'v1' else 2,
-                    ip_address, port,
-                    public_community, private_community,
-                    self.configs['snmp']['retry']['timeout'],
-                    self.configs['snmp']['retry']['max_attempts']
-                )
-            case 'v3':
-                user = configs['authentication']['user']
-                auth_protocol = configs['authentication']['auth_protocol']
-                auth_passphrase = configs['authentication']['auth_passphrase']
-                priv_protocol = configs['authentication']['priv_protocol']
-                priv_passphrase = configs['authentication']['priv_passphrase']
-                security_level = configs['authentication']['security_level']
+            match version:
+                # both v1 and v2 use communities, thus combine them
+                case 'v1' | 'v2':
+                    public_community = configs[version]['public_community']
+                    private_community = configs[version][
+                        'private_community']
 
-                transport = TransportSnmpV3(
-                    outlets, 3, ip_address, port,
-                    user, auth_protocol, auth_passphrase,
-                    priv_protocol, priv_passphrase,
-                    security_level,
-                    self.configs['snmp']['retry']['timeout'],
-                    self.configs['snmp']['retry']['max_attempts']
-                )
-            case _:
-                raise AttributeError('Unsupported SNMP version')
+                    transport = TransportSnmpV1V2(
+                        outlets, vnum, ip_address, port,
+                        public_community, private_community,
+                        self.configs['snmp']['retry']['timeout'],
+                        self.configs['snmp']['retry']['max_attempts']
+                    )
+                case 'v3':
+                    user = configs['v3']['user']
+                    auth_protocol = configs['v3']['auth_protocol']
+                    auth_passphrase = configs['v3']['auth_passphrase']
+                    priv_protocol = configs['v3']['priv_protocol']
+                    priv_passphrase = configs['v3']['priv_passphrase']
+                    security_level = configs['v3']['security_level']
+
+                    transport = TransportSnmpV3(
+                        outlets, vnum, ip_address, port,
+                        user, auth_protocol, auth_passphrase,
+                        priv_protocol, priv_passphrase,
+                        security_level,
+                        self.configs['snmp']['retry']['timeout'],
+                        self.configs['snmp']['retry']['max_attempts']
+                    )
+
+        # either no version found or version not supported
+        if transport is None:
+            raise AttributeError('Unsupported SNMP authentication schemes')
 
         return transport
 

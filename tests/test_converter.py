@@ -97,7 +97,7 @@ class TestConverter(unittest.TestCase):
     def tearDown(self):
         self.converter.serial_conn_close()
 
-    @mock.patch('rs232_to_pdu.rs232topdu.Rs2323ToPdu.'
+    @mock.patch('rs232_to_pdu.rs232topdu.Rs232ToPdu.'
                 'power_change_enqueue')
     def test_converter_read_parse(self, mock_func):
         """
@@ -156,7 +156,7 @@ class TestConverter(unittest.TestCase):
         Returns:
 
         """
-        with mock.patch('rs232_to_pdu.rs232topdu.Rs2323ToPdu.'
+        with mock.patch('rs232_to_pdu.rs232topdu.Rs232ToPdu.'
                         'power_change_enqueue') as mock_func:
 
             self.rs232_wr_dev.write('cy 1 1\r'.encode('utf-8'))
