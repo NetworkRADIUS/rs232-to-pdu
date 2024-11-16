@@ -21,30 +21,100 @@ Entry point for rs-232 to SNMP converter script
 Author: Patrick Guo
 Date: 2024-08-13
 """
+import asyncio
+import functools
+import logging
 import pathlib
+import time
+from typing import Callable
 
+import systemd_watchdog
+
+import serial
 import yaml
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from rs232_to_pdu.rs232topdu import Rs232ToPdu
-from rs232_to_pdu.device import FactoryDevice
 
-# Read and setup configs
-CONFIG_FILE = pathlib.Path('/etc', 'config.yaml')
-with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
-    config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
-factory = FactoryDevice()
-devices = factory.devices_from_configs(config)
+from rs232_to_pdu import eventloop
+from rs232_to_pdu.healthcheck import Healthcheck
+from rs232_to_pdu.parsers.base import ParseError
+from rs232_to_pdu.parsers.kvmseq import ParserKvmSequence
+from rs232_to_pdu.powerchange import Powerchange
+from rs232_to_pdu.taskqueue import TaskQueue
+from rs232_to_pdu.device import FactoryDevice, Device
+from rs232_to_pdu.serialconn import SerialConn
+
+
+logger = logging.getLogger(__name__)
+
+class CmdBuffer:
+    def __init__(self):
+        self.data = ''
+        # cmd_counter
+        self.counter = 0
 
 if __name__ == '__main__':
-    serial_listener = Rs232ToPdu(
-        config['serial']['device'],
-        config['serial']['timeout'],
-        config['snmp']['retry']['max_attempts'],
-        config['snmp']['retry']['delay'],
-        config['snmp']['retry']['timeout'],
-        devices,
-        config['healthcheck']['frequency'],
-        config['power_states']['cy_delay']
+    # Read and setup configs
+    config_path = pathlib.Path('config.yaml')
+    with open(config_path, 'r', encoding='utf-8') as fileopen:
+        config = yaml.load(fileopen, Loader=yaml.FullLoader)
+    devices = FactoryDevice().devices_from_configs(config)
+
+    event_loop = eventloop.EventLoop()
+    task_queue = TaskQueue(event_loop)
+    scheduler = AsyncIOScheduler(event_loop=event_loop)
+
+    systemd_wd = systemd_watchdog.watchdog()
+    scheduler.add_job(
+        systemd_wd.notify, 'interval', seconds=systemd_wd.timeout / 2e6
     )
-    serial_listener.start()
+
+    buffer = CmdBuffer()
+    parser = ParserKvmSequence()
+
+    def serial_reader(conn: serial.Serial):
+        buffer.data += conn.read(conn.in_waiting).decode('utf-8')
+
+        chars_read = 0
+        for cursor, char in enumerate(buffer.data):
+            if char != '\r':
+                continue
+
+            try:
+                tokens = parser.parse(''.join(buffer.data[chars_read:cursor + 1]))
+            except ParseError:
+                logger.warning(f'Parser failed to parse {"".join(buffer.data)}')
+            else:
+                if tokens[0] == 'quit' or tokens[0] == '':
+                    logger.info('Quite or empty sequence detected')
+                else:
+                    device = devices[f'{int(tokens[1]):03d}']
+                    Powerchange(
+                        event_loop, task_queue, device,
+                        f'{int(tokens[2]):03d}', tokens[0],
+                        config['power_states']['cy_delay']
+                    )
+
+                chars_read = cursor + 1
+
+        buffer.data = buffer.data[:chars_read]
+
+    conn = SerialConn(event_loop, config['serial']['device'], serial_reader)
+    conn.open()
+
+    task_queue.create_task()
+    scheduler.start()
+
+    # for device in devices.values():
+    #     Healthcheck(
+    #         event_loop, task_queue, device, config['healthcheck']['frequency']
+    #     )
+
+    try:
+        event_loop.run_forever()
+    except KeyboardInterrupt:
+        conn.close()
+        scheduler.shutdown()
+        event_loop.stop()
+        event_loop.close()

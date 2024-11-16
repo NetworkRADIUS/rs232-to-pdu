@@ -69,6 +69,11 @@ class TransportSnmp(Transport):
                                                 retries=retries)
         self.context = pysnmp.ContextData()
 
+    def oid_from_outlet(self, outlet):
+        if outlet not in self.oids:
+            logger.warning(f'Outlet {outlet} not found!')
+        return self.oids[outlet]
+
     async def outlet_state_get(self, outlet: str) -> bool:
         """
         Sends GET command to get outlet state
@@ -78,6 +83,7 @@ class TransportSnmp(Transport):
         Returns:
             outlet state
         """
+        oid = self.oid_from_outlet(outlet)
 
         # Uses read-only authentication to perform GET commands
         err_indicator, err_status, err_index, var_binds = await pysnmp.getCmd(
@@ -85,7 +91,7 @@ class TransportSnmp(Transport):
             self.read_auth,
             self.target,
             self.context,
-            pysnmp.ObjectType(self.oids[outlet])
+            pysnmp.ObjectType(oid)
         )
 
         if err_indicator or err_status:
@@ -106,16 +112,18 @@ class TransportSnmp(Transport):
         Returns:
             outlet state after state change
         """
-
+        oid = self.oid_from_outlet(outlet)
         # Uses read-write authentication to perform SET commands
-        err_indicator, err_status, err_index, var_binds = await pysnmp.setCmd(
-            self.engine,
-            self.write_auth,
-            self.target,
-            self.context,
-            pysnmp.ObjectType(self.oids[outlet],
-                              state)
-        )
+        try:
+            err_indicator, err_status, err_index, var_binds = await pysnmp.setCmd(
+                self.engine,
+                self.write_auth,
+                self.target,
+                self.context,
+                pysnmp.ObjectType(oid, state)
+            )
+        except Exception as e:
+            pass
         if err_indicator or err_status:
             logger.error(
                 f'SNMP set command failed. Status: '

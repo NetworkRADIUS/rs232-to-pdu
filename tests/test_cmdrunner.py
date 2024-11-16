@@ -61,7 +61,7 @@ class TestCmdRunner(unittest.TestCase):
         pre_queue_size = self.cmd_runner.queue.qsize()
 
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(lambda: None)
+            self.cmd_runner.run(lambda: None)
         )
 
         # assert that queue size has increased by exactly 1
@@ -76,10 +76,10 @@ class TestCmdRunner(unittest.TestCase):
 
         # place low priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(low_prio_lambda, False)
+            self.cmd_runner.run(low_prio_lambda, False)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(high_prio_lambda, True)
+            self.cmd_runner.run(high_prio_lambda, True)
         )
 
         # .get() returns (priority, item), thus the [1] at the end
@@ -99,10 +99,10 @@ class TestCmdRunner(unittest.TestCase):
 
         # place high priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(high_prio_lambda, True)
+            self.cmd_runner.run(high_prio_lambda, True)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(low_prio_lambda, False)
+            self.cmd_runner.run(low_prio_lambda, False)
         )
 
         next_cmd_in_queue = self.event_loop.run_until_complete(
@@ -125,7 +125,7 @@ class TestCmdRunner(unittest.TestCase):
 
         # put new item into queue
         self.event_loop.run_until_complete(
-            self.cmd_runner.enqueue(lambda: None, )
+            self.cmd_runner.run(lambda: None, )
         )
 
         self.event_loop.run_until_complete(dummy_sleep(5))
