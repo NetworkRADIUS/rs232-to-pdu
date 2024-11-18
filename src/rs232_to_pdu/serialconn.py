@@ -32,8 +32,8 @@ class SerialConn:
         self.conn = None
 
         self.__jobs = {}
-        self.file_wd = PollingObserver()
-        self.__scheduler = AsyncIOScheduler(event_loop=event_loop)
+        self.__file_wd = PollingObserver()
+        self.__scheduler = AsyncIOScheduler(event_loop=event_loop.event_loop)
         self.__scheduler.start()
 
     def open(self):
@@ -44,7 +44,7 @@ class SerialConn:
 
             if self.conn.is_open:
                 logger.info(f'Opened serial device {self.__device}')
-                self.__event_loop.add_reader(self.conn, self.__reader, self.conn)
+                self.__event_loop.event_loop.add_reader(self.conn, self.__reader, self.conn)
                 self.__event_loop.add_exception_handler(OSError,
                                                         self.__error_handler)
                 return True
@@ -55,7 +55,7 @@ class SerialConn:
         return False
 
     def close(self):
-        self.__event_loop.remove_reader(self.conn)
+        self.__event_loop.event_loop.remove_reader(self.conn)
         self.__event_loop.del_exception_handler(OSError)
         self.conn.close()
 
@@ -63,10 +63,10 @@ class SerialConn:
         if self.open():
             self.__jobs['reconnect'].remove()
             del self.__jobs['reconnect']
-            self.file_wd.stop()
+            self.__file_wd.stop()
 
     def __error_handler(self, loop, context):
-        self.__event_loop.remove_reader(self.conn)
+        self.__event_loop.event_loop.remove_reader(self.conn)
         self.conn.close()
 
         if 'reconnect' not in self.__jobs:
@@ -74,11 +74,11 @@ class SerialConn:
                 self.__reconnect, 'interval', seconds=5
             )
 
-        if not self.file_wd.is_alive():
-            self.file_wd.schedule(
+        if not self.__file_wd.is_alive():
+            self.__file_wd.schedule(
                 LookForFileEH(self.__device, self.__reconnect),
                 f"{'/'.join(self.__device.split('/')[:-1])}/"
             )
 
-            self.file_wd.start()
-            self.file_wd.join()
+            self.__file_wd.start()
+            self.__file_wd.join()

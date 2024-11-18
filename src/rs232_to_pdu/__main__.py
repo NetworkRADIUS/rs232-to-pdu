@@ -22,11 +22,9 @@ Author: Patrick Guo
 Date: 2024-08-13
 """
 import asyncio
-import functools
 import logging
 import pathlib
-import time
-from typing import Callable
+from asyncio import SelectorEventLoop
 
 import systemd_watchdog
 
@@ -34,15 +32,13 @@ import serial
 import yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-
-
 from rs232_to_pdu import eventloop
 from rs232_to_pdu.healthcheck import Healthcheck
 from rs232_to_pdu.parsers.base import ParseError
 from rs232_to_pdu.parsers.kvmseq import ParserKvmSequence
 from rs232_to_pdu.powerchange import Powerchange
 from rs232_to_pdu.taskqueue import TaskQueue
-from rs232_to_pdu.device import FactoryDevice, Device
+from rs232_to_pdu.device import FactoryDevice
 from rs232_to_pdu.serialconn import SerialConn
 
 
@@ -63,7 +59,7 @@ if __name__ == '__main__':
 
     event_loop = eventloop.EventLoop()
     task_queue = TaskQueue(event_loop)
-    scheduler = AsyncIOScheduler(event_loop=event_loop)
+    scheduler = AsyncIOScheduler(event_loop=event_loop.event_loop)
 
     systemd_wd = systemd_watchdog.watchdog()
     scheduler.add_job(
@@ -73,8 +69,8 @@ if __name__ == '__main__':
     buffer = CmdBuffer()
     parser = ParserKvmSequence()
 
-    def serial_reader(conn: serial.Serial):
-        buffer.data += conn.read(conn.in_waiting).decode('utf-8')
+    def serial_reader(_conn: serial.Serial):
+        buffer.data += _conn.read(_conn.in_waiting).decode('utf-8')
 
         chars_read = 0
         for cursor, char in enumerate(buffer.data):
@@ -91,7 +87,7 @@ if __name__ == '__main__':
                 else:
                     device = devices[f'{int(tokens[1]):03d}']
                     Powerchange(
-                        event_loop, task_queue, device,
+                        event_loop.event_loop, task_queue, device,
                         f'{int(tokens[2]):03d}', tokens[0],
                         config['power_states']['cy_delay']
                     )
@@ -106,15 +102,16 @@ if __name__ == '__main__':
     task_queue.create_task()
     scheduler.start()
 
-    # for device in devices.values():
-    #     Healthcheck(
-    #         event_loop, task_queue, device, config['healthcheck']['frequency']
-    #     )
+    for device in devices.values():
+        Healthcheck(
+            event_loop, task_queue, device, config['healthcheck']['frequency']
+        )
+        break
 
     try:
-        event_loop.run_forever()
+        event_loop.event_loop.run_forever()
     except KeyboardInterrupt:
         conn.close()
         scheduler.shutdown()
-        event_loop.stop()
-        event_loop.close()
+        event_loop.event_loop.stop()
+        event_loop.event_loop.close()

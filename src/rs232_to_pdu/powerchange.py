@@ -15,7 +15,7 @@ class Powerchange:
         else:
             action = functools.partial(self.__send, state)
 
-        event_loop.create_task(task_queue.enqueue(action))
+        event_loop.event_loop.create_task(task_queue.enqueue(action))
 
     async def __send(self, state):
         logger.info(f'Power check setting outlet {self.__outlet} of '

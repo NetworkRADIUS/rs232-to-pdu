@@ -1,14 +1,12 @@
 import asyncio
-from asyncio.unix_events import SelectorEventLoop
 from typing import Callable
 
 print(type(asyncio.new_event_loop()))
 
-class EventLoop(SelectorEventLoop):
+class EventLoop:
     def __init__(self):
-        super().__init__()
-
-        super().set_exception_handler(self.__exception_handler)
+        self.event_loop = asyncio.new_event_loop()
+        self.event_loop.set_exception_handler(self.__exception_handler)
         self.handlers = {}
 
     def add_exception_handler(self, error, handler: Callable):
