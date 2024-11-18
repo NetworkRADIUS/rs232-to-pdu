@@ -18,7 +18,6 @@ SUCH DAMAGE.
 
 Contains the transport subclasses for SNMP and the different versions
 """
-import asyncio
 import logging
 
 import pysnmp.hlapi.asyncio as pysnmp

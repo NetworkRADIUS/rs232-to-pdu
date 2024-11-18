@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import BaseEventLoop
 from typing import Callable
 
 
@@ -7,7 +8,7 @@ class TaskQueue:
     Class that places commands in a queue and runs them one after another
     """
 
-    def __init__(self, event_loop) -> None:
+    def __init__(self, event_loop: BaseEventLoop) -> None:
         # Initializes an priority queue with no size limit
         self.queue = asyncio.PriorityQueue()
 
@@ -18,7 +19,7 @@ class TaskQueue:
         self.__event_loop = event_loop
 
     def create_task(self):
-         self.__event_loop.event_loop.create_task(self.__dequeue())
+        self.__event_loop.create_task(self.__dequeue())
 
     async def enqueue(self, func: Callable, high_prio: bool = False) -> None:
         """
@@ -51,7 +52,7 @@ class TaskQueue:
 
         # as long as the event loop is running, we should be expecting new
         # items to be put into the queue
-        while self.__event_loop.event_loop.is_running():
+        while self.__event_loop.is_running():
             # retrieve next item from queue and run the command
             # Will not grab next item until the previous command has been
             # completed

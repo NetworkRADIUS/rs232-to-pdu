@@ -53,6 +53,7 @@ class FactoryDevice:
     """
     Factory class to create devices
     """
+
     def __init__(self):
         self.transport_handlers = {
             'snmp': self.transport_snmp
@@ -160,8 +161,11 @@ class FactoryDevice:
                 # load template if not already cached
                 if device not in self.templates:
                     # load from internal config.yaml
-                    if device in self.configs[transport_type]['devices']['custom']:  # pylint: disable=line-too-long
-                        self.templates[device] = self.configs[transport_type]['devices']['custom'][device]  # pylint: disable=line-too-long
+                    if device in self.configs[transport_type]['devices'][
+                        'custom']:  # pylint: disable=line-too-long
+                        self.templates[device] = \
+                        self.configs[transport_type]['devices']['custom'][
+                            device]  # pylint: disable=line-too-long
 
                     # load from external file
                     else:
@@ -169,7 +173,8 @@ class FactoryDevice:
                             self.configs[transport_type]['devices']['path'],
                             f'{device}.yaml'
                         )
-                        with open(template_path, 'r', encoding='utf-8') as fileopen:
+                        with open(template_path, 'r',
+                                  encoding='utf-8') as fileopen:
                             self.templates[device] = yaml.load(
                                 fileopen, Loader=yaml.FullLoader
                             )
@@ -181,7 +186,6 @@ class FactoryDevice:
                 if not isinstance(option, str):
                     raise TypeError('Power option must be a string')
                 power_states[option] = pysnmp.Integer(value)
-
 
             devices[name] = Device(
                 name, list(device['outlets'].keys()), power_states,

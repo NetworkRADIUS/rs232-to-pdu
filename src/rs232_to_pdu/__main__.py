@@ -21,26 +21,22 @@ Entry point for rs-232 to SNMP converter script
 Author: Patrick Guo
 Date: 2024-08-13
 """
-import asyncio
 import logging
 import pathlib
-from asyncio import SelectorEventLoop
-
-import systemd_watchdog
 
 import serial
+import systemd_watchdog
 import yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from rs232_to_pdu import eventloop
+from rs232_to_pdu.eventloop import EventLoop
+from rs232_to_pdu.device import FactoryDevice
 from rs232_to_pdu.healthcheck import Healthcheck
 from rs232_to_pdu.parsers.base import ParseError
 from rs232_to_pdu.parsers.kvmseq import ParserKvmSequence
 from rs232_to_pdu.powerchange import Powerchange
-from rs232_to_pdu.taskqueue import TaskQueue
-from rs232_to_pdu.device import FactoryDevice
 from rs232_to_pdu.serialconn import SerialConn
-
+from rs232_to_pdu.taskqueue import TaskQueue
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +53,9 @@ if __name__ == '__main__':
         config = yaml.load(fileopen, Loader=yaml.FullLoader)
     devices = FactoryDevice().devices_from_configs(config)
 
-    event_loop = eventloop.EventLoop()
-    task_queue = TaskQueue(event_loop)
-    scheduler = AsyncIOScheduler(event_loop=event_loop.event_loop)
+    event_loop = EventLoop()
+    task_queue = TaskQueue(event_loop.loop)
+    scheduler = AsyncIOScheduler(event_loop=event_loop.loop)
 
     systemd_wd = systemd_watchdog.watchdog()
     scheduler.add_job(
@@ -78,23 +74,25 @@ if __name__ == '__main__':
                 continue
 
             try:
-                tokens = parser.parse(''.join(buffer.data[chars_read:cursor + 1]))
+                tokens = parser.parse(
+                    ''.join(buffer.data[chars_read:cursor + 1]))
             except ParseError:
-                logger.warning(f'Parser failed to parse {"".join(buffer.data)}')
+                logger.warning(
+                    f'Parser failed to parse {"".join(buffer.data)}')
             else:
                 if tokens[0] == 'quit' or tokens[0] == '':
                     logger.info('Quite or empty sequence detected')
                 else:
                     device = devices[f'{int(tokens[1]):03d}']
                     Powerchange(
-                        event_loop.event_loop, task_queue, device,
+                        event_loop.loop, task_queue, device,
                         f'{int(tokens[2]):03d}', tokens[0],
                         config['power_states']['cy_delay']
                     )
 
                 chars_read = cursor + 1
 
-        buffer.data = buffer.data[:chars_read]
+        buffer.data = buffer.data[chars_read:]
 
     conn = SerialConn(event_loop, config['serial']['device'], serial_reader)
     conn.open()
@@ -102,16 +100,16 @@ if __name__ == '__main__':
     task_queue.create_task()
     scheduler.start()
 
-    for device in devices.values():
+    for _device in devices.values():
         Healthcheck(
-            event_loop, task_queue, device, config['healthcheck']['frequency']
+            event_loop.loop, task_queue, _device, config['healthcheck']['frequency']
         )
         break
 
     try:
-        event_loop.event_loop.run_forever()
+        event_loop.loop.run_forever()
     except KeyboardInterrupt:
         conn.close()
         scheduler.shutdown()
-        event_loop.event_loop.stop()
-        event_loop.event_loop.close()
+        event_loop.loop.stop()
+        event_loop.loop.close()

@@ -22,6 +22,7 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file:
             self.callback()
 
+
 class SerialConn:
     def __init__(self, event_loop: EventLoop,
                  device: str, reader: Callable):
@@ -33,7 +34,7 @@ class SerialConn:
 
         self.__jobs = {}
         self.__file_wd = PollingObserver()
-        self.__scheduler = AsyncIOScheduler(event_loop=event_loop.event_loop)
+        self.__scheduler = AsyncIOScheduler(event_loop=event_loop.loop)
         self.__scheduler.start()
 
     def open(self):
@@ -44,7 +45,9 @@ class SerialConn:
 
             if self.conn.is_open:
                 logger.info(f'Opened serial device {self.__device}')
-                self.__event_loop.event_loop.add_reader(self.conn, self.__reader, self.conn)
+                self.__event_loop.loop.add_reader(self.conn,
+                                                  self.__reader,
+                                                  self.conn)
                 self.__event_loop.add_exception_handler(OSError,
                                                         self.__error_handler)
                 return True
@@ -55,7 +58,7 @@ class SerialConn:
         return False
 
     def close(self):
-        self.__event_loop.event_loop.remove_reader(self.conn)
+        self.__event_loop.loop.remove_reader(self.conn)
         self.__event_loop.del_exception_handler(OSError)
         self.conn.close()
 
@@ -66,7 +69,7 @@ class SerialConn:
             self.__file_wd.stop()
 
     def __error_handler(self, loop, context):
-        self.__event_loop.event_loop.remove_reader(self.conn)
+        self.__event_loop.loop.remove_reader(self.conn)
         self.conn.close()
 
         if 'reconnect' not in self.__jobs:
