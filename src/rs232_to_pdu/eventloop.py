@@ -18,6 +18,7 @@ class EventLoop(SelectorEventLoop):
         del self.handlers[error]
 
     def __exception_handler(self, loop, context):
-        if context['exception'] in self.handlers:
-            self.handlers[context['exception']](loop, context)
+        for error, handler in self.handlers.items():
+            if isinstance(context['exception'], error):
+                handler(loop, context)
         raise context['exception']

@@ -6,7 +6,7 @@ import serial
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from serial.serialutil import SerialException
 from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 from rs232_to_pdu.eventloop import EventLoop
 
@@ -22,7 +22,6 @@ class LookForFileEH(FileSystemEventHandler):
         if event.src_path == self.file:
             self.callback()
 
-
 class SerialConn:
     def __init__(self, event_loop: EventLoop,
                  device: str, reader: Callable):
@@ -30,11 +29,12 @@ class SerialConn:
         self.__device = device
         self.__reader = functools.partial(reader)
 
-        self.__jobs = {}
-        self.__scheduler = AsyncIOScheduler(event_loop=event_loop)
-        self.file_wd = Observer()
-
         self.conn = None
+
+        self.__jobs = {}
+        self.file_wd = PollingObserver()
+        self.__scheduler = AsyncIOScheduler(event_loop=event_loop)
+        self.__scheduler.start()
 
     def open(self):
         try:
@@ -47,11 +47,12 @@ class SerialConn:
                 self.__event_loop.add_reader(self.conn, self.__reader, self.conn)
                 self.__event_loop.add_exception_handler(OSError,
                                                         self.__error_handler)
-                return
+                return True
             self.__error_handler(None, None)
         except SerialException:
             logger.error(f'Failed to open serial device {self.__device}')
             self.__error_handler(None, None)
+        return False
 
     def close(self):
         self.__event_loop.remove_reader(self.conn)
@@ -60,22 +61,23 @@ class SerialConn:
 
     def __reconnect(self):
         if self.open():
-            self.__scheduler.remove_job(self.__jobs['reconnect'])
+            self.__jobs['reconnect'].remove()
             del self.__jobs['reconnect']
             self.file_wd.stop()
 
     def __error_handler(self, loop, context):
+        self.__event_loop.remove_reader(self.conn)
         self.conn.close()
 
         if 'reconnect' not in self.__jobs:
             self.__jobs['reconnect'] = self.__scheduler.add_job(
-                self.conn.open, 'interval', seconds=5
+                self.__reconnect, 'interval', seconds=5
             )
 
-        if not self.file_wd.isAlive():
+        if not self.file_wd.is_alive():
             self.file_wd.schedule(
-                LookForFileEH(self.__device, self.conn.open),
-                '/'.join(self.__device.split('/')[:-1])
+                LookForFileEH(self.__device, self.__reconnect),
+                f"{'/'.join(self.__device.split('/')[:-1])}/"
             )
 
             self.file_wd.start()
