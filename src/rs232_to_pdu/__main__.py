@@ -40,7 +40,7 @@ from rs232_to_pdu.taskqueue import TaskQueue
 
 logger = logging.getLogger(__name__)
 
-class CmdBuffer:
+class CmdBuffer:  # pylint: disable=too-few-public-methods
     """
     class to store a buffer
 
@@ -52,7 +52,7 @@ class CmdBuffer:
     def __init__(self):
         self.data = ''
 
-class Main:
+class Main:  # pylint: disable=too-few-public-methods
     """
     main class containing logic flow
     """

@@ -23,12 +23,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Powerchange:
+class Powerchange:  # pylint: disable=too-few-public-methods
     """
     object to push task onto the queue to perform power change
     """
-    def __init__(self,
-                 event_loop, task_queue, device, outlet, state, cy_delay):
+    def __init__(  # pylint: disable=too-many-arguments
+            self, event_loop, task_queue, device, outlet, state, cy_delay
+    ):
         self.__device = device
         self.__outlet = outlet
 

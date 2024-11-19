@@ -107,7 +107,7 @@ class SerialConn:
             del self.__jobs['reconnect']
             self.__file_wd.stop()
 
-    def __error_handler(self, loop, context):
+    def __error_handler(self, loop, context):  # pylint: disable=unused-argument
         """
         error handler for disconnected serial device
         Args:

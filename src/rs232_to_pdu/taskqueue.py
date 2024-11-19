@@ -37,6 +37,11 @@ class TaskQueue:
         self.__event_loop = event_loop
 
     def create_task(self):
+        """
+        starts the dequeue-ing task on the event loop
+        Returns:
+
+        """
         self.__event_loop.create_task(self.__dequeue())
 
     async def enqueue(self, func: Callable, high_prio: bool = False) -> None:
@@ -57,7 +62,6 @@ class TaskQueue:
 
         # puts item into queue
         await self.queue.put((priority, func))
-        pass
 
     async def __dequeue(self):
         """

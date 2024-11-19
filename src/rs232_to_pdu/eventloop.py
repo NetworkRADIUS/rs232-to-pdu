@@ -19,7 +19,7 @@ SUCH DAMAGE.
 
 import asyncio
 from asyncio import BaseEventLoop
-from typing import Callable, AsyncContextManager
+from typing import Callable
 
 
 class EventLoop:

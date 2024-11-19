@@ -26,11 +26,14 @@ from rs232_to_pdu.taskqueue import TaskQueue
 logger = logging.getLogger(__name__)
 
 
-class Healthcheck:
+class Healthcheck:  # pylint: disable=too-few-public-methods
     """
     object that queues partials (closures) onto a queue on a regular timer
     """
-    def __init__(self, event_loop: BaseEventLoop, task_queue: TaskQueue, device: Device, frequency: int):
+    def __init__(
+            self, event_loop: BaseEventLoop, task_queue: TaskQueue,
+            device: Device, frequency: int
+    ):
         self.event_loop = event_loop
         self.task_queue = task_queue
         self.device = device
