@@ -21,7 +21,7 @@ Contains tests for the DeviceCmdRunner class
 
 import unittest
 import asyncio
-from rs232_to_pdu.rs232topdu import QueueRunner # pylint: disable=import-error
+from rs232_to_pdu.taskqueue import TaskQueue # pylint: disable=import-error
 
 
 async def dummy_sleep(timeout):
@@ -45,7 +45,7 @@ class TestCmdRunner(unittest.TestCase):
         Setups the event loop and cmd_runner object
         """
         self.event_loop = asyncio.new_event_loop()
-        self.cmd_runner = QueueRunner()
+        self.task_queue = TaskQueue(self.event_loop)
 
     def tearDown(self):
         """
@@ -58,14 +58,14 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to test that queue size is increased after placing item in it
         """
-        pre_queue_size = self.cmd_runner.queue.qsize()
+        pre_queue_size = self.task_queue.queue.qsize()
 
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(lambda: None)
+            self.task_queue.enqueue(lambda: None)
         )
 
         # assert that queue size has increased by exactly 1
-        self.assertEqual(self.cmd_runner.queue.qsize(), pre_queue_size + 1)
+        self.assertEqual(self.task_queue.queue.qsize(), pre_queue_size + 1)
 
     def test_add_high_prio_to_queue(self):
         """
@@ -76,15 +76,15 @@ class TestCmdRunner(unittest.TestCase):
 
         # place low priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(low_prio_lambda, False)
+            self.task_queue.enqueue(low_prio_lambda, False)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(high_prio_lambda, True)
+            self.task_queue.enqueue(high_prio_lambda, True)
         )
 
         # .get() returns (priority, item), thus the [1] at the end
         next_cmd_in_queue = self.event_loop.run_until_complete(
-            self.cmd_runner.queue.get()
+            self.task_queue.queue.get()
         )[1]
 
         # assert that the item we got was the high priority item
@@ -99,14 +99,14 @@ class TestCmdRunner(unittest.TestCase):
 
         # place high priority item first
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(high_prio_lambda, True)
+            self.task_queue.enqueue(high_prio_lambda, True)
         )
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(low_prio_lambda, False)
+            self.task_queue.enqueue(low_prio_lambda, False)
         )
 
         next_cmd_in_queue = self.event_loop.run_until_complete(
-            self.cmd_runner.queue.get()
+            self.task_queue.queue.get()
         )[1]
 
         # assert that the item we got was not the low priority item
@@ -116,22 +116,20 @@ class TestCmdRunner(unittest.TestCase):
         """
         Test case to ensure that the queue will consume items when they appear
         """
-        pre_queue_size = self.cmd_runner.queue.qsize()
+        pre_queue_size = self.task_queue.queue.qsize()
 
         # begin listening for new items in queue
-        self.event_loop.create_task(
-            self.cmd_runner.dequeue(self.event_loop)
-        )
+        self.task_queue.create_task()
 
         # put new item into queue
         self.event_loop.run_until_complete(
-            self.cmd_runner.run(lambda: None, )
+            self.task_queue.enqueue(lambda: None, )
         )
 
         self.event_loop.run_until_complete(dummy_sleep(5))
 
         # item in queue should be instantly consumed
-        post_queue_size = self.cmd_runner.queue.qsize()
+        post_queue_size = self.task_queue.queue.qsize()
 
         # assert that the queue size has not changed (item added and consumed)
         self.assertEqual(post_queue_size, pre_queue_size)
