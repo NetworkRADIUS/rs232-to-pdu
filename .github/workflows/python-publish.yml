@@ -50,6 +50,8 @@ jobs:
 
   pypi-publish:
     name: Upload release to PyPI
+
+    needs: release-build
     
     runs-on: self-hosted
     
