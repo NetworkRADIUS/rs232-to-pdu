@@ -106,7 +106,7 @@ class TestDevice(unittest.TestCase):
             '002': '1.3.6.2'
         }
 
-        names_valid = ['foo', 'foo_bar', 'foo-bar']
+        names_valid = ['baz/foo', 'baz/qux/foo_bar', 'baz/qux/foo-bar']
         for name in names_valid:
             with self.subTest(name=name):
                 self.configs['devices']['001']['outlets'] = name
@@ -116,7 +116,8 @@ class TestDevice(unittest.TestCase):
                     Device
                 )
 
-        names_invalid = ['foo.bar', 'foo-', 'foo_', '-foo', '_foo', 'foo,bar']
+        names_invalid = ['foo.bar', 'foo-', 'foo_', '-foo', '_foo', 'foo,bar',
+                         'foo']
         for name in names_invalid:
             with self.subTest(name=name):
                 self.configs['devices']['001']['device'] = name

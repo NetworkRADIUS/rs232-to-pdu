@@ -63,7 +63,7 @@ class FactoryDevice:
         self.configs = None
 
         self.template_name_pattern = re.compile(
-            r'^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$'
+            r'^([a-zA-Z0-9]+/)+[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$'
         )
 
     def transport_snmp(  # pylint: disable=too-many-locals
