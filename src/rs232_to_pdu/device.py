@@ -150,13 +150,14 @@ class FactoryDevice:
                 # load template if not already cached
                 if device not in self.templates:
                     # load from internal config.yaml
-                    if device in self.configs[transport_type]['devices'][
-                        'custom']:  # pylint: disable=line-too-long
-                        self.templates[device] = \
-                        self.configs[transport_type]['devices']['custom'][
-                            device]  # pylint: disable=line-too-long
+                    if 'custom' in self.configs[transport_type]['devices']:
+                        if device in self.configs[transport_type]['devices'][
+                            'custom']:  # pylint: disable=line-too-long
+                            self.templates[device] = \
+                            self.configs[transport_type]['devices']['custom'][
+                                device]  # pylint: disable=line-too-long
 
-                    # load from external file
+                        # load from external file
                     else:
                         template_path = pathlib.Path(
                             self.configs[transport_type]['devices']['path'],
