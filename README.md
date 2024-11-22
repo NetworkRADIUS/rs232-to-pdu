@@ -144,6 +144,14 @@ power_states:
   'on': 1
 ```
 
+---
+
+## Contributing to device templates
+
+To create a new device template, create a yaml file under a directory in `src/rs232_to_pdu/devices/`. As a general rule, the template file should be named after the device product number, while the directory the template is in should help describe the template (i.e., manufacturer).
+
+---
+
 ## Config Format
 
 This tool expects a configuration file called ```config.yaml```, placed under ```/etc/ser2snmp/```. This file must 
