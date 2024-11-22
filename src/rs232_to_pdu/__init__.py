@@ -80,18 +80,17 @@ def setup_logging(destination_type, destination) -> None:
     project_logger.addHandler(handler)
 
 
-CONFIG_FILE = pathlib.Path('config.yaml')
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
-        config = yaml.load(fileopen, Loader=yaml.FullLoader)
+CONFIG_FILE = pathlib.Path('etc', 'rs232-to-pdu', 'config.yaml')
+with open(CONFIG_FILE, 'r', encoding='utf-8') as fileopen:
+    config = yaml.load(fileopen, Loader=yaml.FullLoader)
 
-    if 'log' in config:
-        if len(tuple(config['log'].keys())) > 1:
-            raise ValueError('Only one log destination can be configured'
-                             'simultaneously')
+if 'log' in config:
+    if len(tuple(config['log'].keys())) > 1:
+        raise ValueError('Only one log destination can be configured'
+                         'simultaneously')
 
-        for i, key in enumerate(config['log']):
-            setup_logging(key, config['log'][key])
-    else:
-        # default to stdout
-        setup_logging('stream', 'stdout')
+    for i, key in enumerate(config['log']):
+        setup_logging(key, config['log'][key])
+else:
+    # default to stdout
+    setup_logging('stream', 'stdout')
