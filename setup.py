@@ -27,8 +27,8 @@ with open('README.md', encoding='utf-8') as readme:
     setup(
         name='rs232-to-pdu',
         version='1.1.5',
+        author='InkBridge Networks',
 
-        packages=['rs232_to_pdu'],
         package_dir={'': 'src'},
         package_data={'': ['*.*']},
         include_package_data=True,
