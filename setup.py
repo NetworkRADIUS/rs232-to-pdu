@@ -8,7 +8,7 @@ from setuptools.command.install import install
 class CustomInstall(install):  # pylint: disable='missing-class-docstring
     def run(self):
         shutil.copytree('./src/rs232_to_pdu/devices/',
-                        '/usr/share/rs232-to-pdu/devices/',
+                        '/usr/local/rs232-to-pdu/devices/',
                         dirs_exist_ok=True)
 
         super().run()
@@ -16,7 +16,7 @@ class CustomInstall(install):  # pylint: disable='missing-class-docstring
 with open('README.md', encoding='utf-8') as readme:
     setup(
         name='rs232-to-pdu',
-        version='1.1.6',
+        version='1.1.7',
         author='InkBridge Networks',
 
         package_dir={'': 'src'},
