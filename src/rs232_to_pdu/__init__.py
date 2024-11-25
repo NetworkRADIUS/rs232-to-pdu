@@ -33,7 +33,11 @@ def handler_file(dest):  # pylint: disable=missing-function-docstring
 
 
 def handler_syslog(dest):  # pylint: disable=missing-function-docstring
-    return logging.handlers.SysLogHandler(facility=dest['facility'])
+    address = '/dev/log'
+    if address in dest:
+        address = dest['address']
+    return logging.handlers.SysLogHandler(facility=dest['facility']
+                                          , address=address)
 
 
 def handler_stream(dest):  # pylint: disable=missing-function-docstring
