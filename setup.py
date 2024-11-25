@@ -16,7 +16,7 @@ class CustomInstall(install):  # pylint: disable='missing-class-docstring
 with open('README.md', encoding='utf-8') as readme:
     setup(
         name='rs232-to-pdu',
-        version='1.1.5',
+        version='1.1.6',
         author='InkBridge Networks',
 
         package_dir={'': 'src'},
