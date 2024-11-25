@@ -99,6 +99,3 @@ if 'log' in config:
 else:
     # default to stdout
     setup_logging('stream', 'stdout')
-
-# copy device templates to appropriate location
-shutil.copytree('./devices/', config['snmp']['devices']['path'])
