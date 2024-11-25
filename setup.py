@@ -8,8 +8,6 @@ from setuptools.command.install import install
 class CustomInstall(install):  # pylint: disable='missing-class-docstring
     def run(self):
 
-        print(__file__)
-        # time.sleep(120)
         shutil.copytree('./src/rs232_to_pdu/devices/', '/usr/share/rs232-to-pdu/devices/')
 
         super().run()
