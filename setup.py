@@ -1,4 +1,5 @@
 # pylint: disable='missing-module-docstring
+import os
 import shutil
 
 from setuptools import setup
@@ -7,9 +8,17 @@ from setuptools.command.install import install
 
 class CustomInstall(install):  # pylint: disable='missing-class-docstring
     def run(self):
+        for root, dirs, files in os.walk(os.getcwd()):
+            level = root.replace(os.getcwd(), '').count(os.sep)
+            indent = ' ' * 4 * (level)
+            print('{}{}/'.format(indent, os.path.basename(root)))
+            subindent = ' ' * 4 * (level + 1)
+            for f in files:
+                print('{}{}'.format(subindent, f))
+        print(os.getcwd())
         print(__file__)
         shutil.copytree('./src/rs232_to_pdu/devices/',
-                        '/tmp/rs232-to-pdu/devices/',
+                        '/usr/share/rs232-to-pdu/devices/',
                         dirs_exist_ok=True)
 
         super().run()
