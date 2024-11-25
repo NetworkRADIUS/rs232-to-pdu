@@ -121,7 +121,6 @@ class Main:  # pylint: disable=too-few-public-methods
                 event_loop.loop, task_queue, _device,
                 config['healthcheck']['frequency']
             )
-            break
 
         # runs loop forever until a keyboard interrupt
         try:
