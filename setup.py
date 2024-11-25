@@ -31,6 +31,7 @@ with open('README.md', encoding='utf-8') as readme:
         packages=['rs232_to_pdu'],
         package_dir={'': 'src'},
         package_data={'': ['*.*']},
+        include_package_data=True,
 
         description='Converts RS232 serial data to SNMP commands to control PDUs.',
         long_description=readme.read(),
